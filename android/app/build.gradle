@@ -27,7 +27,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace = "com.example.ta"
+    namespace = "com.example.takenow"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
