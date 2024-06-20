@@ -53,7 +53,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyB9c2PLSy-QFV9L3TDTH7GtJS-gjlAdAhE',
-    appId: '1:440615029186:android:c1d2ce27c8e5f5296f2e5b',
+    appId: '1:440615029186:android:f3461a4ff04a54816f2e5b',
     messagingSenderId: '440615029186',
     projectId: 'takenow-22ee7',
     storageBucket: 'takenow-22ee7.appspot.com',
@@ -65,6 +65,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '440615029186',
     projectId: 'takenow-22ee7',
     storageBucket: 'takenow-22ee7.appspot.com',
+    androidClientId: '440615029186-0sbu42ubbh4c25ien5nv08brotd833s0.apps.googleusercontent.com',
+    iosClientId: '440615029186-2sthj3e3fo5epmj8beavrt0kn7e2d8on.apps.googleusercontent.com',
     iosBundleId: 'com.example.takenow',
   );
+
 }
