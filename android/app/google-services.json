@@ -58,6 +58,14 @@
           }
         },
         {
+          "client_id": "440615029186-c8vu0q8fm1fob76it34h3oa0f15kvcuh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.takenow",
+            "certificate_hash": "6d905633e5062cdbf17f96861c3a194d8a550e3e"
+          }
+        },
+        {
           "client_id": "440615029186-a3cgo46sltc4of5m25722j1e6mt0cals.apps.googleusercontent.com",
           "client_type": 3
         }

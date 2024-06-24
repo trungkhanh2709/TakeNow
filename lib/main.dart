@@ -10,11 +10,11 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   SystemChrome.setPreferredOrientations(
-      [DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]).then((value){
+          [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown])
+      .then((value) {
     _intitializeFirebase();
     runApp(const MyApp());
   });
-
 }
 
 class MyApp extends StatelessWidget {
@@ -25,28 +25,21 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
         title: 'TakeNow',
-          theme: ThemeData(
+        theme: ThemeData(
             appBarTheme: const AppBarTheme(
-              centerTitle: true,
-              elevation: 1,
-              iconTheme: IconThemeData(color: Colors.black),
-              titleTextStyle: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.normal,
-                fontSize: 19
-              ),
-              backgroundColor: Color(0x373535),
-
-            )),
-            home: const SplashScreen());
+          centerTitle: true,
+          elevation: 1,
+          iconTheme: IconThemeData(color: Colors.black),
+          titleTextStyle: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.normal, fontSize: 19),
+          backgroundColor: Color(0x373535),
+        )),
+        home: const SplashScreen());
   }
 }
 
-
-_intitializeFirebase() async{
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+_intitializeFirebase() async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 }
-
-
