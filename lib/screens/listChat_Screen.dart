@@ -10,14 +10,14 @@ import 'package:takenow/models/chat_user.dart';
 import 'package:takenow/screens/profile_screen.dart';
 import 'package:takenow/widgets/chat_user_card.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class ListChatScreen extends StatefulWidget {
+  const ListChatScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<ListChatScreen> createState() => _ListChatScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _ListChatScreenState extends State<ListChatScreen> {
   List<ChatUser> list = [];
   @override
   Widget build(BuildContext context) {

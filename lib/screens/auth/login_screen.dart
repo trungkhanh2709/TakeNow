@@ -7,7 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:takenow/api/apis.dart';
 import 'package:takenow/helper/dialogs.dart';
 import 'package:takenow/main.dart';
-import 'package:takenow/screens/home_Screen.dart';
+import 'package:takenow/screens/listChat_Screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,16 +36,16 @@ class _LoginScreenState extends State<LoginScreen> {
         log('\nUserAdditionalInfor: ${user.additionalUserInfo}');
         if ((await APIs.userExists())) {
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+              context, MaterialPageRoute(builder: (_) => const ListChatScreen()));
         } else {
           await APIs.createUser().then((value) {
             Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+                context, MaterialPageRoute(builder: (_) => const ListChatScreen()));
           });
         }
 
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+            context, MaterialPageRoute(builder: (_) => const ListChatScreen()));
       }
     });
   }

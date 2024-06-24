@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:takenow/api/apis.dart';
 import 'package:takenow/main.dart';
 import 'package:takenow/screens/auth/login_screen.dart';
-import 'package:takenow/screens/home_Screen.dart';
+import 'package:takenow/screens/listChat_Screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (APIs.auth.currentUser != null) {
         log('\nUser: ${APIs.auth.currentUser}');
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => HomeScreen()));
+            context, MaterialPageRoute(builder: (_) => ListChatScreen()));
       } else {
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (_) => LoginScreen()));
