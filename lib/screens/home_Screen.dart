@@ -1,27 +1,237 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:takenow/api/apis.dart';
+import 'package:takenow/screens/listChat_Screen.dart';
+import 'package:takenow/screens/profile_screen.dart';
+
+import '../models/chat_user.dart';
+
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  List<ChatUser> list = [];
+
+  late List<CameraDescription> cameras;
+  late CameraController _controller;
+  bool _isCameraInitialized = false;
+  double _maxZoom = 1.0;
+  double _minZoom = 1.0;
+  double _currentZoom = 1.0;
+  double _zoomSpeedMutiplier = 0.008;
+  int _currentCameraIndex = 0;
+
   @override
+  void initState() {
+    super.initState();
+    initializeCamera();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> initializeCamera() async {
+    cameras = await availableCameras();
+    _controller = CameraController(cameras[_currentCameraIndex], ResolutionPreset.high);
+
+    _controller.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+
+    try {
+      await _controller.initialize();
+      double zoom = await _controller.getMaxZoomLevel();
+
+      setState(() {
+        _isCameraInitialized = true;
+        _maxZoom = zoom;
+        _minZoom = 1.0;
+        _currentZoom = 1.0;
+      });
+    } catch (e) {
+      print('Error initializing camera: $e');
+    }
+  }
+
   Widget build(BuildContext context) {
+    if (!_isCameraInitialized || !_controller.value.isInitialized) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Camera'),
+        ),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    double screenWidth = MediaQuery.of(context).size.width;
+    double cameraPreviewSize = screenWidth * 0.9;
+
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(CupertinoIcons.person),
-        title: const Text('TakeNow2'),
+        title: const Text('Camera'),
         actions: [
-          IconButton(onPressed: (){}, icon: const Icon(Icons.chat))
-        ],
-    ),
+          IconButton(
+            icon: Icon(Icons.person),
+            onPressed: () async {
+              GoogleSignInAccount? googleUser  = await GoogleSignIn().signInSilently();
+                if (googleUser != null) {
+                // Convert GoogleSignInAccount to ChatUser
+                    ChatUser user = ChatUser(
+                      image: googleUser.photoUrl ?? '',
+                      name: googleUser.displayName ?? '',
+                      about: '', // Add default value or fetch from backend if available
+                      createdAt: '', // Add default value or fetch from backend if available
+                      id: googleUser.id,
+                      isOnline: false, // Add default value or fetch from backend if available
+                      lastActive: '', // Add default value or fetch from backend if available
+                      email: googleUser.email,
+                      pushToken: '', // Add default value or fetch from backend if available
+                      );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
+                    );
+                } else {
+                  showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                  title: Text('Google Account Not Found'),
+                  content: Text('Please sign in with your Google account.'),
+                  actions: [
+                  TextButton(
+                  onPressed: () {
+                  Navigator.pop(context);
+                  },
+                  child: Text('OK'),
+                  ),
+                  ],
+                  ),
+                  );
+                }
+              }
 
+
+          ),
+          IconButton(
+            icon: Icon(Icons.chat),
+            onPressed: (){
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ListChatScreen()));
+            },
+          ),
+        ],
+      ),
+      backgroundColor: Color(0xFF2F2E2E),
+      body: Stack(
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              margin: EdgeInsets.only(top: 100.0),
+              width: cameraPreviewSize,
+              height: cameraPreviewSize,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20.0),
+                child: GestureDetector(
+                  onScaleUpdate: _onScaleUpdate,
+                  onTapDown: _onTapFocus,
+                  child: CameraPreview(_controller),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+
+
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          FloatingActionButton(
+            onPressed: _onCapturePressed,
+            child: Icon(Icons.camera_alt),
+          ),
+        ],
+      ),
+    );
+  }
+  void _onSwitchCamera() {
+    _currentCameraIndex = (_currentCameraIndex + 1) % cameras.length;
+    _controller = CameraController(
+      cameras[_currentCameraIndex],
+      ResolutionPreset.high,
     );
 
+    _controller.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+    _controller.initialize().then((_) {
+      setState(() {});
+    });
+  }
 
+  void _onToggleFlash() {
+    if (_controller.value.isInitialized) {
+      bool currentFlashMode = _controller.value.flashMode == FlashMode.torch;
+      _controller.setFlashMode(currentFlashMode ? FlashMode.off : FlashMode.torch);
+    }
+  }
 
+  void _onCapturePressed() async {
+    try {
+      XFile file = await _controller.takePicture();
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(),
+            body: Center(
+              child: Image.file(File(file.path)),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error taking picture: $e');
+    }
+  }
+
+  void _onTapFocus(TapDownDetails details) {
+    double x = details.localPosition.dx / MediaQuery.of(context).size.width;
+    double y = details.localPosition.dy / MediaQuery.of(context).size.height;
+    Offset focusPoint = Offset(x, y);
+    _controller.setFocusPoint(focusPoint);
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    double newZoom = _currentZoom * details.scale;
+    if (details.scale < 1.0) {
+      newZoom = _currentZoom - (_currentZoom - _minZoom) * (1.0 - details.scale) * (_zoomSpeedMutiplier + 0.065);
+    } else {
+      newZoom = _currentZoom + (_maxZoom - _currentZoom) * (details.scale - 1.0) * _zoomSpeedMutiplier;
+    }
+
+    newZoom = newZoom.clamp(_minZoom, _maxZoom);
+    _controller.setZoomLevel(newZoom);
+    setState(() {
+      _currentZoom = newZoom;
+    });
   }
 }

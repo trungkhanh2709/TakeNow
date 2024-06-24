@@ -23,17 +23,7 @@ class _ListChatScreenState extends State<ListChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            icon: Icon(CupertinoIcons.person),
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => ProfileScreen(
-                            user: list[0],
-                          )));
-            },
-          ),
+
           title: const Text('TakeNow2'),
           actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.chat))],
         ),
