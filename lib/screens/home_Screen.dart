@@ -15,15 +15,11 @@ class _HomeScreenState extends State<HomeScreen> {
   late List<CameraDescription> cameras;
   late CameraController _controller;
   bool _isCameraInitialized = false;
-<<<<<<< Updated upstream
-  int _currentCameraIndex = 0;
   double _maxZoom = 1.0;
   double _minZoom = 1.0;
   double _currentZoom = 1.0;
   double _zoomSpeedMutiplier = 0.008;
-=======
-  int _currentCameraIndex = 0; // Index to track current camera
->>>>>>> Stashed changes
+  int _currentCameraIndex = 0;
 
   @override
   void initState() {
@@ -49,18 +45,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       await _controller.initialize();
-<<<<<<< Updated upstream
       double zoom = await _controller.getMaxZoomLevel();
 
       setState(() {
         _isCameraInitialized = true;
-        _maxZoom= zoom;
+        _maxZoom = zoom;
         _minZoom = 1.0;
         _currentZoom = 1.0;
-=======
-      setState(() {
-        _isCameraInitialized = true;
->>>>>>> Stashed changes
       });
     } catch (e) {
       print('Error initializing camera: $e');
@@ -81,34 +72,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     double screenWidth = MediaQuery.of(context).size.width;
-<<<<<<< Updated upstream
-    double cameraPreviewSize = screenWidth * 0.95;
-=======
-
-    // Calculate the size for the CameraPreview to maintain 1:1 aspect ratio
     double cameraPreviewSize = screenWidth * 0.9;
->>>>>>> Stashed changes
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Camera'),
         actions: [
           IconButton(
-            onPressed: () {
-              _onSwitchCamera();
-            },
-<<<<<<< Updated upstream
-            icon: Icon(Icons.person),
-=======
+            onPressed: _onSwitchCamera,
             icon: Icon(Icons.switch_camera),
->>>>>>> Stashed changes
           ),
           IconButton(
-            onPressed: () {
-              _onToggleFlash();
-            },
-<<<<<<< Updated upstream
-            icon: Icon(Icons.chat_bubble_outline_outlined),
+            onPressed: _onToggleFlash,
+            icon: Icon(Icons.flash_on),
           ),
         ],
       ),
@@ -118,72 +94,21 @@ class _HomeScreenState extends State<HomeScreen> {
           Align(
             alignment: Alignment.topCenter,
             child: Container(
-              margin: EdgeInsets.only(top:100.0),
+              margin: EdgeInsets.only(top: 100.0),
               width: cameraPreviewSize,
               height: cameraPreviewSize,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(20.0), // Điều chỉnh độ cong của góc tại đây
-                child: OverflowBox(
-                  alignment: Alignment.center,
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    child: SizedBox(
-                      width: _controller.value.previewSize!.height,
-                      height: _controller.value.previewSize!.width,
-                      child: GestureDetector(
-                        onScaleUpdate: (details){
-                          double newZoom = _currentZoom * details.scale;
-                          if(details.scale < 1.0){
-                            newZoom= _currentZoom - (_currentZoom - _minZoom) * (1.0 - details.scale) * (_zoomSpeedMutiplier + 0.065);
-                          }
-                          else{
-                            newZoom = _currentZoom + (_maxZoom - _currentZoom) * (details.scale - 1.0) * _zoomSpeedMutiplier;
-                          }
-
-                          newZoom = newZoom.clamp(_minZoom, _maxZoom);
-                          _controller.setZoomLevel(newZoom);
-                          setState(() {
-                            _currentZoom = newZoom;
-                          });
-                        },
-                      onTapDown: _onTapFocus,
-                      child: CameraPreview(_controller),
-                    ),
-                  ),
-=======
-            icon: Icon(Icons.flash_on),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Container(
-          width: cameraPreviewSize,
-          height: cameraPreviewSize,
-          child: ClipRect(
-
-            child: OverflowBox(
-              alignment: Alignment.center,
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller.value.previewSize!.height,
-                  height: _controller.value.previewSize!.width,
+                borderRadius: BorderRadius.circular(20.0),
+                child: GestureDetector(
+                  onScaleUpdate: _onScaleUpdate,
+                  onTapDown: _onTapFocus,
                   child: CameraPreview(_controller),
->>>>>>> Stashed changes
                 ),
               ),
             ),
           ),
-<<<<<<< Updated upstream
-          ),
         ],
-
-        ),
-
-=======
-        ),
       ),
->>>>>>> Stashed changes
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -192,24 +117,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _onCapturePressed,
             child: Icon(Icons.camera_alt),
           ),
-          FloatingActionButton(
-            onPressed: _onToggleFlash,
-            child: Icon(Icons.flash_on),
-          ),
-          FloatingActionButton(
-            onPressed: _onSwitchCamera,
-            child: Icon(Icons.switch_camera),
-          ),
         ],
       ),
     );
   }
 
-
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
   void _onSwitchCamera() {
     _currentCameraIndex = (_currentCameraIndex + 1) % cameras.length;
     _controller = CameraController(
@@ -222,51 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {});
       }
     });
-<<<<<<< Updated upstream
-
-    _controller.initialize().then((_) {
-      setState(() {});
-    });
-  }
-
-  void _onToggleFlash() {
-    if (_controller.value.isInitialized) {
-      bool currentFlashMode = _controller.value.flashMode == FlashMode.torch;
-      _controller.setFlashMode(currentFlashMode ? FlashMode.off : FlashMode.torch);
-    }
-  }
-
-  void _onCapturePressed() async {
-    try {
-      XFile file = await _controller.takePicture();
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(),
-            body: Center(
-              child: AspectRatio(
-                aspectRatio: 1.0,
-                child: Image.file(File(file.path)),
-
-              )
-            ),
-          ),
-        ),
-      );
-    } catch (e) {
-      print('Error taking picture: $e');
-    }
-  }
-
-  void _onTapFocus(TapDownDetails details){
-    double x = details.localPosition.dx / MediaQuery.of(context).size.width;
-    double y = details.localPosition.dx / MediaQuery.of(context).size.height;
-    Offset focusPoint = Offset(x, y); // Create Offset object
-    _controller.setFocusPoint(focusPoint);
-=======
->>>>>>> Stashed changes
-
     _controller.initialize().then((_) {
       setState(() {});
     });
@@ -296,5 +163,27 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       print('Error taking picture: $e');
     }
+  }
+
+  void _onTapFocus(TapDownDetails details) {
+    double x = details.localPosition.dx / MediaQuery.of(context).size.width;
+    double y = details.localPosition.dy / MediaQuery.of(context).size.height;
+    Offset focusPoint = Offset(x, y);
+    _controller.setFocusPoint(focusPoint);
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    double newZoom = _currentZoom * details.scale;
+    if (details.scale < 1.0) {
+      newZoom = _currentZoom - (_currentZoom - _minZoom) * (1.0 - details.scale) * (_zoomSpeedMutiplier + 0.065);
+    } else {
+      newZoom = _currentZoom + (_maxZoom - _currentZoom) * (details.scale - 1.0) * _zoomSpeedMutiplier;
+    }
+
+    newZoom = newZoom.clamp(_minZoom, _maxZoom);
+    _controller.setZoomLevel(newZoom);
+    setState(() {
+      _currentZoom = newZoom;
+    });
   }
 }
