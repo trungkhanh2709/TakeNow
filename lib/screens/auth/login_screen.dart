@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/api/apis.dart';
 import 'package:takenow/helper/dialogs.dart';
 import 'package:takenow/main.dart';
@@ -31,10 +32,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   _handleGoogleBtnClick() {
     Dialogs.showProcessBar(context);
-    _signInWithGoogle().then((user) async {
-      if (user != null) {
-        log('\nUser: ${user.user}');
-        log('\nUserAdditionalInfor: ${user.additionalUserInfo}');
+    _signInWithGoogle().then((userCredential) async {
+      if (userCredential != null) {
+        User? user = userCredential.user;
+        String userId = user?.uid ?? '';
+        print('Google User ID: $userId');
         if ((await APIs.userExists())) {
           Navigator.pushReplacement(
               context, MaterialPageRoute(builder: (_) => const HomeScreen()));
@@ -66,7 +68,19 @@ class _LoginScreenState extends State<LoginScreen> {
         accessToken: googleAuth?.accessToken,
         idToken: googleAuth?.idToken,
       );
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      User? user = userCredential.user;
+      if (user != null) {
+        // Lấy ID của người dùng Google
+        String userId = user.uid;
+        Globals.setGoogleUserId(userId); // Lưu trữ ID vào Globals
 
+        print('Google User ID: $userId');
+
+        return userCredential;
+      } else {
+        return null;
+      }
       // Once signed in, return the UserCredential
       return await APIs.auth.signInWithCredential(credential);
     } catch (e) {

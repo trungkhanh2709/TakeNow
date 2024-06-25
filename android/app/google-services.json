@@ -7,42 +7,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:440615029186:android:f3461a4ff04a54816f2e5b",
-        "android_client_info": {
-          "package_name": "com.example.ta"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "440615029186-a3cgo46sltc4of5m25722j1e6mt0cals.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyB9c2PLSy-QFV9L3TDTH7GtJS-gjlAdAhE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "440615029186-6aul02nv7506cdsjcvkipbmkft1i4roc.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "440615029186-2sthj3e3fo5epmj8beavrt0kn7e2d8on.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.takenow"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:440615029186:android:c1d2ce27c8e5f5296f2e5b",
         "android_client_info": {
           "package_name": "com.example.takenow"
@@ -55,6 +19,14 @@
           "android_info": {
             "package_name": "com.example.takenow",
             "certificate_hash": "6378f644387a2e48fff7aeff7a6de439b799f482"
+          }
+        },
+        {
+          "client_id": "440615029186-58gabg40nnml74j21ha1370nh5rj5vav.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.takenow",
+            "certificate_hash": "7743055478834ef667e9e206b11fc7ca67708182"
           }
         },
         {
