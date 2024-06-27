@@ -68,7 +68,7 @@ class APIs {
         .doc(time);
     await ref.set(post.toJson());
   }
-
+//ham uppic
   static Future<void> upLoadPhoto(String caption,String userId,File file) async {
     final ext = file.path.split('.').last;
     final ref = storage.ref().child('images/${getConversationID(userId)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
