@@ -1,10 +1,16 @@
+import 'dart:convert';
+import 'dart:developer';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:takenow/models/chat_user.dart';
+import 'package:takenow/widgets/message_card.dart';
+import '../models/message.dart' as message_model; // Sử dụng alias cho message.dart
+
 
 import '../api/apis.dart';
 import '../main.dart';
+import '../models/message.dart';
 
 class ChatScreen extends StatefulWidget{
   final ChatUser user;
@@ -16,6 +22,11 @@ class ChatScreen extends StatefulWidget{
 }
 
 class _ChatScreenState extends State<ChatScreen>{
+  List<message_model.Message> _list = [];
+
+  //for handling message text changes
+  final _textController = TextEditingController();
+
   @override
   Widget build(BuildContext context){
     return SafeArea(
@@ -25,35 +36,37 @@ class _ChatScreenState extends State<ChatScreen>{
           flexibleSpace: _appBar(),
         ),
 
+        backgroundColor: const Color.fromARGB(255, 234, 248, 255),
+
         //body
         body: Column(
           children: [
             Expanded(
               child: StreamBuilder(
-                stream: APIs.getAllUsers(),
+                stream: APIs.getAllMesage(widget.user),
                 builder: (context, snapshot) {
                   switch (snapshot.connectionState) {
-                  //data loading
+                    //if data is loading
                     case ConnectionState.waiting:
                     case ConnectionState.none:
-                      // return const Center(child: CircularProgressIndicator());
+                      return const SizedBox();
               
-                  //data loaded => show
+                    //if some or all data is loaded => show
                     case ConnectionState.active:
                     case ConnectionState.done:
-                      // final data = snapshot.data?.docs;
-                      // _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ??
-                      //     [];
-              
-                      final _list = ['hii', 'hello'];
-              
+                      final data = snapshot.data?.docs;
+                      _list = data
+                          ?.map((e) => Message.fromJson(e.data()))
+                          .toList() ??
+                          [];
+
                       if (_list.isNotEmpty) {
                         return ListView.builder(
                             itemCount: _list.length,
                             padding: EdgeInsets.only(top: mq.height * .01),
                             physics: const BouncingScrollPhysics(),
                             itemBuilder: (context, index) {
-                              return Text('Message: ${_list[index]}');
+                              return MessageCard(message: _list[index]);
                             });
                       } else {
                         return const Center(
@@ -138,8 +151,9 @@ class _ChatScreenState extends State<ChatScreen>{
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.emoji_emotions, color: Colors.blueAccent, size: 25)),
 
-                  const Expanded(
+                  Expanded(
                       child: TextField(
+                        controller: _textController,
                         keyboardType: TextInputType.multiline,
                         maxLines: null,
                         decoration: const InputDecoration(
@@ -168,7 +182,12 @@ class _ChatScreenState extends State<ChatScreen>{
 
             //send message button
             MaterialButton(
-              onPressed: (){},
+              onPressed: (){
+                if(_textController.text.isNotEmpty){
+                  APIs.sendMessage(widget.user, _textController.text);
+                  _textController.text = '';
+                }
+              },
               minWidth: 0,
               padding:
                 const EdgeInsets.only(top: 10, bottom: 10, right: 5, left: 10),

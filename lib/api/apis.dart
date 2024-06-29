@@ -5,6 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:takenow/models/chat_user.dart';
+import 'package:takenow/models/message.dart' as message_model; // Sử dụng alias cho message.
+import 'package:takenow/models/post_user.dart' as post_user_model; // Sử dụng alias cho post_user.dart
+
+import 'package:takenow/models/message.dart';
 
 import '../models/chat_user.dart';
 import '../models/post_user.dart';
@@ -62,6 +66,7 @@ class APIs {
         .doc(user.uid)
         .set(chatUser.toJson());
   }
+
   // for getting all user from firestore database
   static Stream<QuerySnapshot<Map<String, dynamic>>> getAllUsers(){
     return firestore
@@ -71,7 +76,7 @@ class APIs {
   }
 
   static Future<void> postPhoto(
-       String caption, String imageUrl, Type type) async {
+       String caption, String imageUrl, post_user_model.Type type) async {
     //message sending time (also used as id)
     final time = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -164,6 +169,35 @@ class APIs {
 
     //updating image in firestore database
     final imageUrl = await ref.getDownloadURL();
-    await postPhoto(caption, imageUrl, Type.image);
+    await postPhoto(caption, imageUrl, post_user_model.Type.image);
+  }
+
+  ///******************* Chat Screen Related APIs *******************///
+
+  // for getting all message of a specific conversation from firestore database
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getAllMesage(
+      ChatUser user){
+    return firestore
+        .collection('chats/${getConversationID(user.id)}/messages/')
+        .snapshots();
+  }
+
+  //for sending message
+  static Future<void> sendMessage(ChatUser chatUser, String msg) async {
+    //message sending time (also used as id)
+    final time = DateTime.now().millisecondsSinceEpoch.toString();
+
+    //message to send
+    final message_model.Message message = message_model.Message(
+        msg: msg,
+        read: '',
+        told: chatUser.id,
+        type: message_model.Type.text,
+        sent: time,
+        fromId: user.uid);
+    
+     final ref =
+      firestore.collection('chats/${getConversationID(chatUser.id)}/messages/');
+     await ref.doc(time).set(message.toJson());
   }
 }
