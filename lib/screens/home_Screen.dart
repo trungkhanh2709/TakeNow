@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:takenow/screens/listChat_Screen.dart';
 import 'package:takenow/screens/profile_screen.dart';
+import 'package:takenow/screens/viewPhotoScreen.dart';
 
 import '../models/chat_user.dart';
 import 'UploadPhotoScreen.dart';
@@ -81,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     double screenWidth = MediaQuery.of(context).size.width;
-    double cameraPreviewSize = screenWidth ;
+    double cameraPreviewSize = screenWidth;
 
     return Scaffold(
       appBar: AppBar(
@@ -90,19 +92,25 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.person),
             onPressed: () async {
-              GoogleSignInAccount? googleUser = await GoogleSignIn().signInSilently();
+              GoogleSignInAccount? googleUser =
+                  await GoogleSignIn().signInSilently();
               if (googleUser != null) {
                 // Convert GoogleSignInAccount to ChatUser
                 ChatUser user = ChatUser(
                   image: googleUser.photoUrl ?? '',
                   name: googleUser.displayName ?? '',
-                  about: '', // Add default value or fetch from backend if available
-                  createdAt: '', // Add default value or fetch from backend if available
+                  about:
+                      '', // Add default value or fetch from backend if available
+                  createdAt:
+                      '', // Add default value or fetch from backend if available
                   id: googleUser.id,
-                  isOnline: false, // Add default value or fetch from backend if available
-                  lastActive: '', // Add default value or fetch from backend if available
+                  isOnline:
+                      false, // Add default value or fetch from backend if available
+                  lastActive:
+                      '', // Add default value or fetch from backend if available
                   email: googleUser.email,
-                  pushToken: '', // Add default value or fetch from backend if available
+                  pushToken:
+                      '', // Add default value or fetch from backend if available
                 );
                 Navigator.push(
                   context,
@@ -130,7 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.chat),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ListChatScreen()));
+              Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => ListChatScreen()));
             },
           ),
         ],
@@ -159,16 +168,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-
           IconButton(
             icon: Icon(Icons.flip_camera_ios_outlined),
             onPressed: _onSwitchCamera,
-          ), FloatingActionButton(
+          ),
+          FloatingActionButton(
             onPressed: _onCapturePressed,
             child: Icon(Icons.camera_alt),
           ),
@@ -178,6 +186,38 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: BottomAppBar(
+          color: Color(0xFF2F2E2E),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ViewPhotoScreen()),
+                  );
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Album',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    SizedBox(width: 5),
+                    SvgPicture.asset(
+                      'assets/icons/expanddown.svg',
+                      width: 24,
+                      height: 24,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 40), // Space between icon and text
+                  ],
+                ),
+              ),
+            ],
+          )),
     );
   }
 
@@ -212,7 +252,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onToggleFlash() {
     if (_controller.value.isInitialized) {
       bool currentFlashMode = _controller.value.flashMode == FlashMode.torch;
-      _controller.setFlashMode(currentFlashMode ? FlashMode.off : FlashMode.torch);
+      _controller
+          .setFlashMode(currentFlashMode ? FlashMode.off : FlashMode.torch);
     }
   }
 
@@ -223,7 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => UploadPhotoScreen(imagePath: file.path),
-
         ),
       );
     } catch (e) {
@@ -242,9 +282,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onScaleUpdate(ScaleUpdateDetails details) {
     double newZoom = _currentZoom * details.scale;
     if (details.scale < 1.0) {
-      newZoom = _currentZoom - (_currentZoom - _minZoom) * (1.0 - details.scale) * (_zoomSpeedMultiplier + 0.065);
+      newZoom = _currentZoom -
+          (_currentZoom - _minZoom) *
+              (1.0 - details.scale) *
+              (_zoomSpeedMultiplier + 0.065);
     } else {
-      newZoom = _currentZoom + (_maxZoom - _currentZoom) * (details.scale - 1.0) * _zoomSpeedMultiplier;
+      newZoom = _currentZoom +
+          (_maxZoom - _currentZoom) *
+              (details.scale - 1.0) *
+              _zoomSpeedMultiplier;
     }
 
     newZoom = newZoom.clamp(_minZoom, _maxZoom);
