@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:takenow/screens/listChat_Screen.dart';
 import 'package:takenow/screens/profile_screen.dart';
@@ -86,118 +86,107 @@ class _HomeScreenState extends State<HomeScreen> {
     double cameraPreviewSize = screenWidth;
 
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Camera'),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.person),
-              onPressed: () async {
-                GoogleSignInAccount? googleUser =
-                    await GoogleSignIn().signInSilently();
-                if (googleUser != null) {
-                  // Convert GoogleSignInAccount to ChatUser
-                  ChatUser user = ChatUser(
-                    image: googleUser.photoUrl ?? '',
-                    name: googleUser.displayName ?? '',
-                    about:
-                        '', // Add default value or fetch from backend if available
-                    createdAt:
-                        '', // Add default value or fetch from backend if available
-                    id: googleUser.id,
-                    isOnline:
-                        false, // Add default value or fetch from backend if available
-                    lastActive:
-                        '', // Add default value or fetch from backend if available
-                    email: googleUser.email,
-                    pushToken:
-                        '', // Add default value or fetch from backend if available
-                  );
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => ProfileScreen(user: user)),
-                  );
-                } else {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text('Google Account Not Found'),
-                      content: Text('Please sign in with your Google account.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.chat),
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => ListChatScreen()));
-              },
-            ),
-          ],
-        ),
-        backgroundColor: Color(0xFF2F2E2E),
-        body: Stack(
-          children: [
-            Align(
-              alignment: Alignment.topCenter,
-              child: Container(
-                margin: EdgeInsets.only(top: 100.0),
-                width: cameraPreviewSize,
-                height: cameraPreviewSize,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(40.0),
-                  child: AspectRatio(
-                    aspectRatio: 1.0,
-                    child: GestureDetector(
-                      onScaleUpdate: _onScaleUpdate,
-                      onTapDown: _onTapFocus,
-                      child: CameraPreview(_controller),
-                    ),
+      appBar: AppBar(
+        title: const Text('Camera'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.person),
+            onPressed: () async {
+              GoogleSignInAccount? googleUser =
+                  await GoogleSignIn().signInSilently();
+              if (googleUser != null) {
+                // Convert GoogleSignInAccount to ChatUser
+                ChatUser user = ChatUser(
+                  image: googleUser.photoUrl ?? '',
+                  name: googleUser.displayName ?? '',
+                  about:
+                      '', // Add default value or fetch from backend if available
+                  createdAt:
+                      '', // Add default value or fetch from backend if available
+                  id: googleUser.id,
+                  isOnline:
+                      false, // Add default value or fetch from backend if available
+                  lastActive:
+                      '', // Add default value or fetch from backend if available
+                  email: googleUser.email,
+                  pushToken:
+                      '', // Add default value or fetch from backend if available
+                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
+                );
+              } else {
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: Text('Google Account Not Found'),
+                    content: Text('Please sign in with your Google account.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.chat),
+            onPressed: () {
+              Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => ListChatScreen()));
+            },
+          ),
+        ],
+      ),
+      backgroundColor: Color(0xFF2F2E2E),
+      body: Stack(
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              margin: EdgeInsets.only(top: 100.0),
+              width: cameraPreviewSize,
+              height: cameraPreviewSize,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(40.0),
+                child: AspectRatio(
+                  aspectRatio: 1.0,
+                  child: GestureDetector(
+                    onScaleUpdate: _onScaleUpdate,
+                    onTapDown: _onTapFocus,
+                    child: CameraPreview(_controller),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: Icon(
-                Icons.flash_on,
-                color: Colors.white,
-                size: 40,
-              ),
-              onPressed: _onToggleFlash,
-            ),
-            FloatingActionButton(
-              onPressed: _onCapturePressed,
-              child: Icon(
-                  Icons.camera_alt,
-              ),
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.flip_camera_ios_outlined,
-                color: Colors.white,
-                size: 40,
-              ),
-              onPressed: _onSwitchCamera,
-            ),
-          ],
-        ),
-        bottomNavigationBar: BottomAppBar(
+          ),
+        ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          IconButton(
+            icon: Icon(Icons.flip_camera_ios_outlined),
+            onPressed: _onSwitchCamera,
+          ),
+          FloatingActionButton(
+            onPressed: _onCapturePressed,
+            child: Icon(Icons.camera_alt),
+          ),
+          IconButton(
+            icon: Icon(Icons.flash_on),
+            onPressed: _onToggleFlash,
+          ),
+        ],
+      ),
+      bottomNavigationBar: BottomAppBar(
           color: Color(0xFF2F2E2E),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -212,10 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-
                     Text(
                       'Album',
-                      style: TextStyle(color: Colors.white,fontSize: 16),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                     SizedBox(width: 5),
                     SvgPicture.asset(
@@ -226,12 +214,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(width: 40), // Space between icon and text
                   ],
-
                 ),
               ),
             ],
-          ),
-        ));
+          )),
+    );
   }
 
   void _onSwitchCamera() async {

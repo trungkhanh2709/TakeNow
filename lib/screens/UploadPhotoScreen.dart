@@ -1,5 +1,4 @@
 import 'dart:developer';
-import 'dart:ffi';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,12 +9,10 @@ import 'package:takenow/Class/Globals.dart';
 
 import '../api/apis.dart';
 
-
-
 class UploadPhotoScreen extends StatefulWidget {
   final String imagePath;
-  const UploadPhotoScreen({Key? key, required this.imagePath}) : super(key: key);
-
+  const UploadPhotoScreen({Key? key, required this.imagePath})
+      : super(key: key);
 
   @override
   _UploadPhotoScreenState createState() => _UploadPhotoScreenState();
@@ -50,14 +47,11 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
     String caption = captionController.text.trim();
 
     if (_image == null) {
-
       log('No image selected');
       return;
+    } else {
+      await APIs.upLoadPhoto(caption, userId, _image!);
     }
-    else{
-      await APIs.upLoadPhoto(caption,userId,_image!);
-    }
-
   }
 
   @override
@@ -72,7 +66,9 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
           children: <Widget>[
             _image == null
                 ? Text('No image selected.')
-                : Image.file(_image!, height: 300.0), // Use !_image to access File since it's nullable
+                : Image.file(_image!,
+                    height:
+                        300.0), // Use !_image to access File since it's nullable
             ElevatedButton(
               onPressed: getImage,
               child: Text('Take Picture'),

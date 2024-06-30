@@ -23,7 +23,6 @@ class _ListChatScreenState extends State<ListChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-
           title: const Text('TakeNow2'),
           actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.chat))],
         ),
