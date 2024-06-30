@@ -12,14 +12,14 @@ class PostUser {
   late final String imageUrl;
   late final String timestamp;
   late final String userId;
-  late final Type type;
+  late final PostType type;
 
 
   PostUser.fromJson(Map<String, dynamic> json) {
     caption = json['caption'].toString();
     imageUrl = json['imageUrl'].toString();
     userId = json['userId'].toString();
-    type = json['type'].toString() == Type.image.name ? Type.image : Type.text;
+    type = json['type'].toString() == PostType.image.name ? PostType.image : PostType.text;
 
     timestamp = json['timestamp'].FieldValue.serverTimestamp().toString();
   }
@@ -36,4 +36,4 @@ class PostUser {
   }
 }
 
-enum Type { text, image }
+enum PostType { text, image }

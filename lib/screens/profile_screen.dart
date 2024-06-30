@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:developer';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -39,12 +40,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             iconTheme: IconThemeData(color: Colors.black),
           ),
       
-          //floating button to add new user
+          //floating button to log out
           floatingActionButton: Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: FloatingActionButton.extended(
               onPressed: () async {
                 Dialogs.showProcessBar(context);
+
+                await APIs.updateActiveStatus(false);
+
                 await APIs.auth.signOut().then((value) async {
                   await GoogleSignIn().signOut().then((value) {
                     Navigator.pop(context);

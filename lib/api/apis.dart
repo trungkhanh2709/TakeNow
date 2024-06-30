@@ -5,8 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:takenow/models/chat_user.dart';
-import 'package:takenow/models/message.dart' as message_model; // Sử dụng alias cho message.
-import 'package:takenow/models/post_user.dart' as post_user_model; // Sử dụng alias cho post_user.dart
 
 import 'package:takenow/models/message.dart';
 
@@ -76,7 +74,7 @@ class APIs {
   }
 
   static Future<void> postPhoto(
-       String caption, String imageUrl, post_user_model.Type type) async {
+       String caption, String imageUrl, PostType type) async {
     //message sending time (also used as id)
     final time = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -169,7 +167,22 @@ class APIs {
 
     //updating image in firestore database
     final imageUrl = await ref.getDownloadURL();
-    await postPhoto(caption, imageUrl, post_user_model.Type.image);
+    await postPhoto(caption, imageUrl, PostType.image);
+  }
+
+  //for getting specific user info
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getUserInfo(ChatUser chatUser) {
+    return firestore
+        .collection('users')
+        .where('id', isNotEqualTo: chatUser.id)
+        .snapshots();
+  }
+
+  //update online or last active status of user
+  static Future<void> updateActiveStatus(bool isOnline) async{
+    firestore.collection('users').doc(user.uid).update
+        ({'is_online' : isOnline,
+        'last_active' : DateTime.now().millisecondsSinceEpoch.toString()});
   }
 
   ///******************* Chat Screen Related APIs *******************///
@@ -179,11 +192,12 @@ class APIs {
       ChatUser user){
     return firestore
         .collection('chats/${getConversationID(user.id)}/messages/')
+        .orderBy('sent', descending: true)
         .snapshots();
   }
 
   //for sending message
-  static Future<void> sendMessage(ChatUser chatUser, String msg) async {
+  static Future<void> sendMessage(ChatUser chatUser, String msg, MessageType type) async {
     //message sending time (also used as id)
     final time = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -192,7 +206,7 @@ class APIs {
         msg: msg,
         read: '',
         told: chatUser.id,
-        type: message_model.Type.text,
+        type: type,
         sent: time,
         fromId: user.uid);
     
@@ -215,5 +229,26 @@ class APIs {
         .orderBy('sent', descending: true)
         .limit(1)
         .snapshots();
+  }
+
+  //send chat image
+  static Future<void> sendChatImage(ChatUser chatUser, File file) async{
+    //gettng image file extension
+    final ext = file.path.split('.').last;
+
+    //storage file ref with path
+    final ref = storage.ref().child(
+        'images/${getConversationID(chatUser.id)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
+
+    //uploading image
+    await ref
+      .putFile(file, SettableMetadata(contentType: 'image/$ext'))
+      .then((pO) {
+        log('Data Transferred: ${pO.bytesTransferred / 1000} kb');
+    });
+
+    //updating image in firestore database
+    final imageUrl = await ref.getDownloadURL();
+    await sendMessage(chatUser, imageUrl, MessageType.image);
   }
 }

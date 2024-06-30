@@ -11,7 +11,7 @@ class Message {
   late final String msg;
   late final String read;
   late final String told;
-  late final Type type;
+  late final MessageType type;
   late final String sent;
   late final String fromId;
 
@@ -20,7 +20,7 @@ class Message {
       msg = json['msg'].toString();
       read = json['read'].toString();
       told = json['told'].toString();
-      type = json['type'].toString() == Type.image.name ? Type.image : Type.text;
+      type = json['type'].toString() == MessageType.image.name ? MessageType.image : MessageType.text;
       sent = json['sent'].toString();
       fromId = json['fromId'].toString();
     }
@@ -38,4 +38,4 @@ class Message {
   }
 }
 
-enum Type {text, image}
+enum MessageType {text, image}
