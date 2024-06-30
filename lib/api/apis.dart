@@ -1,11 +1,12 @@
-import 'dart:developer';
 import 'dart:io';
+import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:takenow/models/chat_user.dart';
 
+import '../models/chat_user.dart';
 import '../models/post_user.dart';
 
 class APIs {
@@ -13,12 +14,14 @@ class APIs {
   static FirebaseFirestore firestore = FirebaseFirestore.instance;
   static FirebaseStorage storage = FirebaseStorage.instance;
   static late ChatUser me;
+
   static User get user => auth.currentUser!;
 
   //check user exists or not
   static Future<bool> userExists() async {
     return (await firestore.collection('users').doc(user.uid).get()).exists;
   }
+
   static String getConversationID(String id) =>
       user.uid.hashCode <= id.hashCode
           ? '${user.uid}_$id'
@@ -31,11 +34,11 @@ class APIs {
         .doc(user.uid)
         .get()
         .then((user) {
-          if(user.exists){
-            me = ChatUser.fromJson(user.data()!);
-          } else{
-            createUser().then((value) => getSelfInfo());
-          }
+      if(user.exists){
+        me = ChatUser.fromJson(user.data()!);
+      } else{
+        createUser().then((value) => getSelfInfo());
+      }
     });
   }
 
@@ -57,18 +60,37 @@ class APIs {
     return await firestore
         .collection('users')
         .doc(user.uid)
-        .set(chatUser.toJson())
-        .then((value) {
-          me = chatUser;
-        });
+        .set(chatUser.toJson());
   }
-
   // for getting all user from firestore database
   static Stream<QuerySnapshot<Map<String, dynamic>>> getAllUsers(){
     return firestore
         .collection('users')
         .where('id', isNotEqualTo: user.uid)
         .snapshots();
+  }
+
+  static Future<void> postPhoto(
+       String caption, String imageUrl, Type type) async {
+    //message sending time (also used as id)
+    final time = DateTime.now().millisecondsSinceEpoch.toString();
+
+    //message to send
+    final PostUser post = PostUser(
+        caption: caption,
+        imageUrl: imageUrl,
+        timestamp: time,
+        userId: user.uid,
+        type: type
+    );
+
+
+    final ref = firestore
+        .collection('posts')
+        .doc(getConversationID(user.uid))
+        .collection('post_image')
+        .doc(time);
+    await ref.set(post.toJson());
   }
 
   //for updating user information
@@ -78,9 +100,9 @@ class APIs {
         firestore.collection('users').doc(user.uid).update({
           'name' : me.name,
           'about' : me.about,
+        });
       });
-    });
-  } else {
+    } else {
       firestore.collection('users').doc(user.uid).update({
         'name': me.name,
         'about': me.about,
@@ -88,7 +110,6 @@ class APIs {
     }
   }
 
-  //update profile picture of user
   // Update profile picture of user
   static Future<void> updateProfilePicture(File file) async {
     try {
@@ -108,7 +129,7 @@ class APIs {
     }
   }
 
-// Phương thức thực hiện cập nhật ảnh đại diện nội bộ
+  // Phương thức thực hiện cập nhật ảnh đại diện nội bộ
   static Future<void> _updateProfilePicture(File file) async {
     final ext = file.path.split('.').last;
     log('Extension: $ext');
@@ -131,28 +152,6 @@ class APIs {
 
     log('Profile picture updated successfully');
   }
-  static Future<void> postPhoto(
-      String caption, String imageUrl, Type type) async {
-    //message sending time (also used as id)
-    final time = DateTime.now().millisecondsSinceEpoch.toString();
-
-    //message to send
-    final PostUser post = PostUser(
-        caption: caption,
-        imageUrl: imageUrl,
-        timestamp: time,
-        userId: user.uid,
-        type: type
-    );
-
-
-    final ref = firestore
-        .collection('posts')
-        .doc(getConversationID(user.uid))
-        .collection('post_image')
-        .doc(time);
-    await ref.set(post.toJson());
-  }
 
   static Future<void> upLoadPhoto(String caption,String userId,File file) async {
     final ext = file.path.split('.').last;
@@ -167,5 +166,4 @@ class APIs {
     final imageUrl = await ref.getDownloadURL();
     await postPhoto(caption, imageUrl, Type.image);
   }
-
 }
