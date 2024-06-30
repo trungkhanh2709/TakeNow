@@ -41,6 +41,9 @@ dependencies:
   image_picker: ^1.1.2
   firebase_storage: ^12.0.1
   flutter_svg: ^2.0.10+1
+  #For showing Emoji
+  emoji_picker_flutter: ^2.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

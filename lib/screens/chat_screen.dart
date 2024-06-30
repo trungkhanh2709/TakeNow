@@ -7,7 +7,6 @@ import 'package:takenow/models/chat_user.dart';
 import 'package:takenow/widgets/message_card.dart';
 import '../models/message.dart' as message_model; // Sử dụng alias cho message.dart
 
-
 import '../api/apis.dart';
 import '../main.dart';
 import '../models/message.dart';
@@ -55,10 +54,7 @@ class _ChatScreenState extends State<ChatScreen>{
                     case ConnectionState.active:
                     case ConnectionState.done:
                       final data = snapshot.data?.docs;
-                      _list = data
-                          ?.map((e) => Message.fromJson(e.data()))
-                          .toList() ??
-                          [];
+                      _list = data?.map((e) => Message.fromJson(e.data())).toList() ?? [];
 
                       if (_list.isNotEmpty) {
                         return ListView.builder(
