@@ -201,6 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    //thm icon album
                     Text(
                       'Album',
                       style: TextStyle(color: Colors.white, fontSize: 16),
