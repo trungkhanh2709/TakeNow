@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:takenow/models/chat_user.dart';
 
+import 'package:takenow/models/message.dart';
+
 import '../models/chat_user.dart';
 import '../models/post_user.dart';
 
@@ -62,6 +64,7 @@ class APIs {
         .doc(user.uid)
         .set(chatUser.toJson());
   }
+
   // for getting all user from firestore database
   static Stream<QuerySnapshot<Map<String, dynamic>>> getAllUsers(){
     return firestore
@@ -71,7 +74,7 @@ class APIs {
   }
 
   static Future<void> postPhoto(
-       String caption, String imageUrl, Type type) async {
+       String caption, String imageUrl, PostType type) async {
     //message sending time (also used as id)
     final time = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -164,6 +167,88 @@ class APIs {
 
     //updating image in firestore database
     final imageUrl = await ref.getDownloadURL();
-    await postPhoto(caption, imageUrl, Type.image);
+    await postPhoto(caption, imageUrl, PostType.image);
+  }
+
+  //for getting specific user info
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getUserInfo(ChatUser chatUser) {
+    return firestore
+        .collection('users')
+        .where('id', isNotEqualTo: chatUser.id)
+        .snapshots();
+  }
+
+  //update online or last active status of user
+  static Future<void> updateActiveStatus(bool isOnline) async{
+    firestore.collection('users').doc(user.uid).update
+        ({'is_online' : isOnline,
+        'last_active' : DateTime.now().millisecondsSinceEpoch.toString()});
+  }
+
+  ///******************* Chat Screen Related APIs *******************///
+
+  // for getting all message of a specific conversation from firestore database
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getAllMesage(
+      ChatUser user){
+    return firestore
+        .collection('chats/${getConversationID(user.id)}/messages/')
+        .orderBy('sent', descending: true)
+        .snapshots();
+  }
+
+  //for sending message
+  static Future<void> sendMessage(ChatUser chatUser, String msg, MessageType type) async {
+    //message sending time (also used as id)
+    final time = DateTime.now().millisecondsSinceEpoch.toString();
+
+    //message to send
+    final Message message = Message(
+        msg: msg,
+        read: '',
+        told: chatUser.id,
+        type: type,
+        sent: time,
+        fromId: user.uid);
+    
+     final ref = firestore.collection('chats/${getConversationID(chatUser.id)}/messages/');
+     await ref.doc(time).set(message.toJson());
+  }
+
+  //update read status of message
+  static Future<void> updateMessageReadStatus(Message message) async{
+    firestore
+        .collection('chats/${getConversationID(message.fromId)}/messages/')
+        .doc(message.sent)
+        .update({'read': DateTime.now().millisecondsSinceEpoch.toString()});
+  }
+
+  //get only last message of a specific chat
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getLastMessage(ChatUser user){
+    return firestore
+        .collection('chats/${getConversationID(user.id)}/messages/')
+        .orderBy('sent', descending: true)
+        .limit(1)
+        .snapshots();
+  }
+
+  //send chat image
+  static Future<void> sendChatImage(ChatUser chatUser, File file) async{
+    //gettng image file extension
+    final ext = file.path.split('.').last;
+
+    //storage file ref with path
+    final ref = storage.ref().child(
+        'images/${getConversationID(chatUser.id)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
+
+    //uploading image
+    await ref
+      .putFile(file, SettableMetadata(contentType: 'image/$ext'))
+      .then((pO) {
+        log('Data Transferred: ${pO.bytesTransferred / 1000} kb');
+    });
+
+    //updating image in firestore database
+    final imageUrl = await ref.getDownloadURL();
+    await sendMessage(chatUser, imageUrl, MessageType.image);
   }
 }
