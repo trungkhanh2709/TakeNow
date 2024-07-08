@@ -173,10 +173,18 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _onToggleFlash,
 
           ),
-          FloatingActionButton(
-            onPressed: _onCapturePressed,
-            child: Icon(Icons.camera_alt),
-          ),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle),
+              child: ElevatedButton(onPressed:  _onCapturePressed, child: null,
+    
+    ),
+            ),
+          
+          
           IconButton(
               onPressed: _onSwitchCamera,
               icon: SvgPicture.asset('assets/icons/Camera_light.svg',width: 50, height: 55,)
