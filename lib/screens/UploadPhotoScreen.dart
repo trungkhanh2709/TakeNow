@@ -2,11 +2,13 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:gallery_saver/gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:takenow/Class/Globals.dart';
+import 'package:takenow/screens/home_Screen.dart';
 import 'package:vibration/vibration.dart';
 
 import '../api/apis.dart';
@@ -114,8 +116,23 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     }
   }
 
-  void DownloadImage() {
-    log("dfjfd");
+  void DownloadImage() async {
+    if (_image != null) {
+      final bool? result = await GallerySaver.saveImage(_image!.path, albumName: 'Takenow');
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image saved to album Takenow')),
+
+        ); log('save');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save image')),
+        );log('fail');
+      }
+
+    } else {
+      log('No image to save');
+    }
   }
 
   @override
@@ -197,7 +214,10 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      onPressed: getImage,
+                      onPressed:(){
+                    Navigator
+                        .push(context,MaterialPageRoute(builder: (_) => HomeScreen()));
+                    },
                       icon: SvgPicture.asset(
                         'assets/icons/Close_round.svg',
                         width: 55,
