@@ -21,7 +21,7 @@ class _ViewAlbumScreenState extends State<ViewAlbumScreen> {
           padding: EdgeInsets.symmetric(horizontal: 11.0),
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collectionGroup('post_image')
+                .collectionGroup('post_image').orderBy('timestamp', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {

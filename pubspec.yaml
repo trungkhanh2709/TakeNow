@@ -41,8 +41,10 @@ dependencies:
   image_picker: ^1.1.2
   firebase_storage: ^12.0.1
   flutter_svg: ^2.0.10+1
-  #For showing Emoji
   emoji_picker_flutter: ^2.2.0
+  image: ^4.2.0
+  vibration: ^1.9.0
+
 
 dev_dependencies:
   flutter_test:
@@ -67,3 +69,9 @@ flutter:
     - images/LogoFullText.png
     - assets/icons/expanddown.svg
     - assets/icons/darhboard.svg
+    - assets/icons/Camera_light.svg
+    - assets/icons/lightning_duotone_line.svg
+    - assets/icons/Close_round.svg
+    - assets/icons/Import.svg
+    - assets/icons/Send_fill.svg
+    - assets/icons/Close_round.svg

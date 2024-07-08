@@ -22,7 +22,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
       backgroundColor: const Color(0xFF2F2E2E),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collectionGroup('post_image')
+            .collectionGroup('post_image').orderBy('timestamp', descending: true) // Sắp xếp theo timestamp giảm dần
+
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
