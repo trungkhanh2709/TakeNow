@@ -29,6 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
   double _zoomSpeedMultiplier = 0.008;
   int _currentCameraIndex = 0;
 
+
+  //click profile
+
   @override
   void initState() {
     super.initState();
