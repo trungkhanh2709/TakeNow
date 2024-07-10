@@ -1,14 +1,12 @@
-import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:takenow/api/apis.dart';
 import 'package:takenow/screens/listChat_Screen.dart';
 import 'package:takenow/screens/profile_screen.dart';
+
 import 'package:takenow/screens/viewPhotoScreen.dart';
 
-import '../models/chat_user.dart';
 import 'UploadPhotoScreen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     initializeCamera();
+    initializeUser();
   }
 
   @override
@@ -69,9 +68,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> initializeUser() async {
+    try {
+      await APIs.getSelfInfo();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error initializing user: $e');
+      // Handle error initializing user
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (!_isCameraInitialized || !_controller.value.isInitialized) {
+    if (!_isCameraInitialized || !_controller.value.isInitialized || APIs.me == null) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Camera'),
@@ -92,29 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.person),
             onPressed: () async {
-              GoogleSignInAccount? googleUser =
-                  await GoogleSignIn().signInSilently();
-              if (googleUser != null) {
-                // Convert GoogleSignInAccount to ChatUser
-                ChatUser user = ChatUser(
-                  image: googleUser.photoUrl ?? '',
-                  name: googleUser.displayName ?? '',
-                  about:
-                      '', // Add default value or fetch from backend if available
-                  createdAt:
-                      '', // Add default value or fetch from backend if available
-                  id: googleUser.id,
-                  isOnline:
-                      false, // Add default value or fetch from backend if available
-                  lastActive:
-                      '', // Add default value or fetch from backend if available
-                  email: googleUser.email,
-                  pushToken:
-                      '', // Add default value or fetch from backend if available
-                );
+              if (APIs.me != null){
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
+                    context,
+                    MaterialPageRoute(builder: (_) => ProfileScreen(user: APIs.me)),
                 );
               } else {
                 showDialog(
