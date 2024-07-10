@@ -9,7 +9,11 @@ class ChatUser {
     required this.lastActive,
     required this.email,
     required this.pushToken,
-  });
+    List<String>? friends,
+    List<String>? friendRequests,
+  }) : friends = friends ?? [],
+        friendRequests = friendRequests ?? [];
+
   late String image;
   late String about;
   late String name;
@@ -19,6 +23,8 @@ class ChatUser {
   late String lastActive;
   late String email;
   late String pushToken;
+  late List<String> friends;
+  late List<String> friendRequests;
 
   ChatUser.fromJson(Map<String, dynamic> json) {
     image = json['image'] ?? '';
@@ -30,6 +36,8 @@ class ChatUser {
     lastActive = json['last_active'] ?? '';
     email = json['email'] ?? '';
     pushToken = json['push_token'] ?? '';
+    friends = List<String>.from(json['friends'] ?? []);
+    friendRequests = List<String>.from(json['friend_requests'] ?? []);
   }
 
   Map<String, dynamic> toJson() {
@@ -43,6 +51,8 @@ class ChatUser {
     data['last_active'] = lastActive;
     data['email'] = email;
     data['push_token'] = pushToken;
+    data['friends'] = friends;
+    data['friend_requests'] = friendRequests;
     return data;
   }
 }

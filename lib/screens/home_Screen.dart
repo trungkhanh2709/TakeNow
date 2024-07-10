@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:math' as math;
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:takenow/api/apis.dart';
 import 'package:takenow/screens/listChat_Screen.dart';
 import 'package:takenow/screens/profile_screen.dart';
 import 'package:takenow/screens/viewPhotoScreen.dart';
@@ -18,23 +18,28 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-//chinh camera va backup
 
+//khanh demo 2
 class _HomeScreenState extends State<HomeScreen> {
   late List<CameraDescription> cameras;
   late CameraController _controller;
-  late Future<void> initializeControllerFuture;
+  late Future<void> initiallizeControllerFutter;
   bool _isCameraInitialized = false;
   double _maxZoom = 1.0;
   double _minZoom = 0.7;
-  double _currentZoom = 0.7;
+  double _currentZoom = 1.0;
   double _zoomSpeedMultiplier = 0.008;
   int _currentCameraIndex = 0;
+
+
+  //click profile
 
   @override
   void initState() {
     super.initState();
     initializeCamera();
+    initializeUser();
+
   }
 
   @override
@@ -42,7 +47,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _controller.dispose();
     super.dispose();
   }
-
+  Future<void> initializeUser() async {
+    try {
+      await APIs.getSelfInfo();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error initializing user: $e');
+      // Handle error initializing user
+    }
+  }
   Future<void> initializeCamera() async {
     cameras = await availableCameras();
     _controller = CameraController(
@@ -67,9 +82,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _minZoom = 0.7;
         _currentZoom = defaultZoom;
       });
-
-      // Set the camera to use the default zoom level
-      await _controller.setZoomLevel(defaultZoom);
     } catch (e) {
       print('Error initializing camera: $e');
       // Handle camera initialization error
@@ -88,11 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
-
-    // Calculate the size of the camera preview with a 1:1 aspect ratio
     double cameraPreviewSize = screenWidth;
 
     if (_controller == null || !_controller.value.isInitialized) {
@@ -115,25 +124,13 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.person),
             onPressed: () async {
-              GoogleSignInAccount? googleUser = await GoogleSignIn().signInSilently();
-              if (googleUser != null) {
-                // Convert GoogleSignInAccount to ChatUser
-                ChatUser user = ChatUser(
-                  image: googleUser.photoUrl ?? '',
-                  name: googleUser.displayName ?? '',
-                  about: '',
-                  createdAt: '',
-                  id: googleUser.id,
-                  isOnline: false,
-                  lastActive: '',
-                  email: googleUser.email,
-                  pushToken: '',
-                );
+              if (APIs.me != null){
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
+                  MaterialPageRoute(builder: (_) => ProfileScreen(user: APIs.me)),
                 );
-              } else {
+              }
+              else {
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
@@ -217,38 +214,37 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       bottomNavigationBar: BottomAppBar(
-        color: Color(0xFF2F2E2E),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => ViewPhotoScreen()),
-                );
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Album',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                  SizedBox(width: 5),
-                  SvgPicture.asset(
-                    'assets/icons/expanddown.svg',
-                    width: 24,
-                    height: 24,
-                    color: Colors.white,
-                  ),
-                  SizedBox(width: 40),
-                ],
+          color: Color(0xFF2F2E2E),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ViewPhotoScreen()),
+                  );
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Album',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    SizedBox(width: 5),
+                    SvgPicture.asset(
+                      'assets/icons/expanddown.svg',
+                      width: 24,
+                      height: 24,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 40), // Space between icon and text
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          )),
     );
   }
 

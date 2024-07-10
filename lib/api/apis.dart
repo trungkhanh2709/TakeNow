@@ -8,7 +8,6 @@ import 'package:takenow/models/chat_user.dart';
 
 import 'package:takenow/models/message.dart';
 
-import '../models/chat_user.dart';
 import '../models/post_user.dart';
 
 class APIs {
@@ -57,6 +56,8 @@ class APIs {
       lastActive: time,
       email: user.email.toString(),
       pushToken: '',
+      friends: [],
+      friendRequests: [],
     );
 
     return await firestore
@@ -250,5 +251,82 @@ class APIs {
     //updating image in firestore database
     final imageUrl = await ref.getDownloadURL();
     await sendMessage(chatUser, imageUrl, MessageType.image);
+  }
+
+  //Phương thức để thêm bạn bè
+  static Future<bool> addFriend(String friendId) async {
+    try {
+      final currentUser = auth.currentUser;
+      if (currentUser == null) return false;
+
+      final userDoc = firestore.collection('users').doc(currentUser.uid);
+      final friendDoc = firestore.collection('users').doc(friendId);
+
+      // Kiểm tra xem người dùng có tồn tại không
+      final friendSnapshot = await friendDoc.get();
+      if (!friendSnapshot.exists) return false;
+
+      // Gửi yêu cầu kết bạn
+      await friendDoc.update({
+        'friend_requests': FieldValue.arrayUnion([currentUser.uid])
+      });
+
+      return true;
+      }catch(e){
+      print('Error adding friend request: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> respondToFriendRequest(String friendId, bool accept) async {
+    try{
+      final currentUser = auth.currentUser;
+      if(currentUser == null) return false;
+
+      final currentUserDoc = firestore.collection('users').doc(currentUser.uid);
+      final friendUserDoc = firestore.collection('users').doc(friendId);
+
+      final currentUserData = await currentUserDoc.get();
+      final friendUserData = await friendUserDoc.get();
+
+      if(accept){
+        // Thêm bạn bè vào danh sách bạn bè của người dùng hiện tại
+        await currentUserDoc.update({
+          'friends': FieldValue.arrayUnion([friendId])
+        });
+
+        // Thêm người dùng hiện tại vào danh sách bạn bè của bạn
+        await friendUserDoc.update({
+          'friends': FieldValue.arrayUnion([currentUser.uid])
+        });
+      }
+
+      // Xóa yêu cầu kết bạn
+      await currentUserDoc.update({
+        'friend_requests': FieldValue.arrayRemove([friendId])
+      });
+
+      return true;
+    } catch (e){
+      print('Error responding to friend request: $e');
+      return false;
+    }
+  }
+
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getFriends() {
+    return firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('friends')
+        .snapshots();
+  }
+
+  // Lấy các bài viết từ các bạn bè
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getFriendPosts() {
+    return firestore
+        .collection('posts')
+        .where('userId', whereIn: me.friends) // Chỉ lấy các bài viết từ friends
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 }

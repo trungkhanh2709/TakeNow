@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:takenow/api/apis.dart';
 import 'package:takenow/main.dart';
 import 'package:takenow/models/chat_user.dart';
-import 'package:takenow/screens/profile_screen.dart';
 import 'package:takenow/widgets/chat_user_card.dart';
 
 class ListChatScreen extends StatefulWidget {
@@ -25,7 +25,8 @@ class _ListChatScreenState extends State<ListChatScreen> {
   @override
   void initState() {
     super.initState();
-    APIs.getSelfInfo();
+    // APIs.getSelfInfo();
+    _getFriends();
   }
 
   @override
@@ -82,17 +83,8 @@ class _ListChatScreenState extends State<ListChatScreen> {
                   },
                   icon: Icon(_isSearching
                       ? CupertinoIcons.clear_circled_solid
-                      : Icons.search)),
-
-              //more features button
-              IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => ProfileScreen(user: APIs.me)));
-                  },
-                  icon: const Icon(Icons.more_vert))
+                      : Icons.search)
+              ),
             ],
           ),
 
@@ -107,47 +99,72 @@ class _ListChatScreenState extends State<ListChatScreen> {
                 child: const Icon(Icons.add_comment_rounded)),
           ),
 
-          body: StreamBuilder(
-            stream: APIs.getAllUsers(),
+          body: StreamBuilder<DocumentSnapshot>(
+            stream: APIs.firestore.collection('users').doc(APIs.auth.currentUser?.uid).snapshots(),
+            builder: (context, snapshot){
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final userDoc = snapshot.data!;
+            final userData = userDoc.data() as Map<String, dynamic>?; // Chuyển đổi kiểu dữ liệu
+            final friends = userData?['friends'] is List
+                ? List<String>.from(userData?['friends'] ?? [])
+                : [];
+
+            if (friends.isEmpty) {
+            return const Center(
+            child: Text('No Connection Found!', style: TextStyle(fontSize: 20)),
+            );
+            }
+            return ListView.builder(
+            itemCount: _isSearching ? _searchList.length : _list.length,
+            padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * .01),
+            physics: const BouncingScrollPhysics(),
+            itemBuilder: (context, index) {
+            final friendId = friends[index];
+
+            return FutureBuilder<DocumentSnapshot>(
+            future: APIs.firestore.collection('users').doc(friendId).get(),
             builder: (context, snapshot) {
-              switch (snapshot.connectionState) {
-                //data loading
-                case ConnectionState.waiting:
-                case ConnectionState.none:
-                  return const Center(child: CircularProgressIndicator());
+            if (!snapshot.hasData) {
+            return const ListTile(
+            title: Text('Đang tải...'),
+            );
+            }
 
-                //data loaded => show
-                case ConnectionState.active:
-                case ConnectionState.done:
-                  final data = snapshot.data?.docs;
-                  _list =
-                      data?.map((e) => ChatUser.fromJson(e.data())).toList() ??
-                          [];
-
-                  if (_list.isNotEmpty) {
-                    return ListView.builder(
-                        itemCount:
-                            _isSearching ? _searchList.length : _list.length,
-                        padding: EdgeInsets.only(top: mq.height * .01),
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          return ChatUserCard(
-                              user: _isSearching
-                                  ? _searchList[index]
-                                  : _list[index]);
-                          //return Text('Name: ${list[index]}');
-                        });
-                  } else {
-                    return const Center(
-                      child: Text('No Connection Found!',
-                          style: TextStyle(fontSize: 20)),
-                    );
-                  }
-              }
+            final friend = snapshot.data!;
+            final chatUser = ChatUser.fromJson(friend.data() as Map<String, dynamic>);
+            return ChatUserCard(user: chatUser);
+            },
+            );
+            },
+            );
             },
           ),
         ),
       ),
     );
+  }
+
+
+  Future<void> _getFriends() async {
+    try {
+      final currentUser = APIs.auth.currentUser;
+      if (currentUser == null) return;
+
+      final userDoc = await APIs.firestore.collection('users').doc(currentUser.uid).get();
+      final userData = userDoc.data() as Map<String, dynamic>?; // Chuyển đổi kiểu dữ liệu
+      final friendIds = userData?['friends'] is List
+          ? List<String>.from(userData?['friends'] ?? [])
+          : [];
+
+      final friendDocs = await Future.wait(friendIds.map((id) => APIs.firestore.collection('users').doc(id).get()));
+      _list = friendDocs.map((doc) => ChatUser.fromJson(doc.data()!)).toList();
+
+      setState(() {});
+    } catch (e) {
+      print('Error getting friends: $e');
+    }
   }
 }
