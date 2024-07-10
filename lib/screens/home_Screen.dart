@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-//chinh camera 
+//chinh camera va backup
 
 class _HomeScreenState extends State<HomeScreen> {
   late List<CameraDescription> cameras;
