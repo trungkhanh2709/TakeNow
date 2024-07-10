@@ -1,12 +1,14 @@
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:takenow/api/apis.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:takenow/screens/listChat_Screen.dart';
 import 'package:takenow/screens/profile_screen.dart';
-
 import 'package:takenow/screens/viewPhotoScreen.dart';
-
+import 'package:image/image.dart' as img;
+import '../models/chat_user.dart';
 import 'UploadPhotoScreen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late List<CameraDescription> cameras;
   late CameraController _controller;
+  late Future<void> initiallizeControllerFutter;
   bool _isCameraInitialized = false;
   double _maxZoom = 1.0;
   double _minZoom = 1.0;
@@ -30,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     initializeCamera();
-    initializeUser();
   }
 
   @override
@@ -68,21 +70,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> initializeUser() async {
-    try {
-      await APIs.getSelfInfo();
-      if (mounted) {
-        setState(() {});
-      }
-    } catch (e) {
-      print('Error initializing user: $e');
-      // Handle error initializing user
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (!_isCameraInitialized || !_controller.value.isInitialized || APIs.me == null) {
+    if (!_isCameraInitialized || !_controller.value.isInitialized) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Camera'),
@@ -94,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     double screenWidth = MediaQuery.of(context).size.width;
-    double cameraPreviewSize = screenWidth;
+    double previewSize = screenWidth;  // Keeping width and height same for 1:1 aspect ratio
 
     return Scaffold(
       appBar: AppBar(
@@ -103,10 +93,24 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.person),
             onPressed: () async {
-              if (APIs.me != null){
+              GoogleSignInAccount? googleUser =
+              await GoogleSignIn().signInSilently();
+              if (googleUser != null) {
+                // Convert GoogleSignInAccount to ChatUser
+                ChatUser user = ChatUser(
+                  image: googleUser.photoUrl ?? '',
+                  name: googleUser.displayName ?? '',
+                  about: '', // Add default value or fetch from backend if available
+                  createdAt: '', // Add default value or fetch from backend if available
+                  id: googleUser.id,
+                  isOnline: false, // Add default value or fetch from backend if available
+                  lastActive: '', // Add default value or fetch from backend if available
+                  email: googleUser.email,
+                  pushToken: '', // Add default value or fetch from backend if available
+                );
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ProfileScreen(user: APIs.me)),
+                  context,
+                  MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
                 );
               } else {
                 showDialog(
@@ -143,12 +147,12 @@ class _HomeScreenState extends State<HomeScreen> {
             alignment: Alignment.topCenter,
             child: Container(
               margin: EdgeInsets.only(top: 100.0),
-              width: cameraPreviewSize,
-              height: cameraPreviewSize,
+              width: previewSize,
+              height: previewSize,  // Keeping width and height same for 1:1 aspect ratio
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(40.0),
                 child: AspectRatio(
-                  aspectRatio: 1.0,
+                  aspectRatio: 1.0,  // Ensuring 1:1 aspect ratio
                   child: GestureDetector(
                     onScaleUpdate: _onScaleUpdate,
                     onTapDown: _onTapFocus,
@@ -165,16 +169,17 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           IconButton(
-            icon: Icon(Icons.flip_camera_ios_outlined),
-            onPressed: _onSwitchCamera,
+            icon: SvgPicture.asset('assets/icons/lightning_duotone_line.svg',width: 50, height: 55),
+            onPressed: _onToggleFlash,
+
           ),
           FloatingActionButton(
             onPressed: _onCapturePressed,
             child: Icon(Icons.camera_alt),
           ),
           IconButton(
-            icon: Icon(Icons.flash_on),
-            onPressed: _onToggleFlash,
+              onPressed: _onSwitchCamera,
+              icon: SvgPicture.asset('assets/icons/Camera_light.svg',width: 50, height: 55,)
           ),
         ],
       ),
@@ -252,19 +257,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onCapturePressed() async {
     try {
-      XFile file = await _controller.takePicture();
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => UploadPhotoScreen(imagePath: file.path),
-        ),
-      );
+      await _controller.takePicture().then((XFile file) async {
+        File imageFile = File(file.path);
+
+        img.Image? image = img.decodeImage(imageFile.readAsBytesSync());
+        if (image != null) {
+
+          int minLength = image.width < image.height ? image.width : image.height;
+          int offsetX = (image.width - minLength) ~/ 2;
+          int offsetY = (image.height - minLength) ~/ 2;
+          img.Image croppedImage = img.copyCrop(image, x:offsetX, y:offsetY, width: minLength, height: minLength);
+
+          // Ghi ảnh đã crop vào file tạm
+          File croppedFile = await imageFile.writeAsBytes(img.encodeJpg(croppedImage));
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UploadPhotoScreen(imagePath: croppedFile.path),
+            ),
+          );
+        } else {
+          print('Error decoding image');
+        }
+      });
     } catch (e) {
       print('Error taking picture: $e');
       // Handle error taking picture
     }
   }
-
   void _onTapFocus(TapDownDetails details) {
     double x = details.localPosition.dx / MediaQuery.of(context).size.width;
     double y = details.localPosition.dy / MediaQuery.of(context).size.height;

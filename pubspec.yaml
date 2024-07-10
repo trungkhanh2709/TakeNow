@@ -46,6 +46,7 @@ dependencies:
   gallery_saver: ^2.3.0
 
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -75,3 +76,5 @@ flutter:
     - assets/icons/Import.svg
     - assets/icons/Send_fill.svg
     - assets/icons/Close_round.svg
+    - assets/icons/Dowloaded.svg
+    - assets/icons/Upload_sucessfull.svg
