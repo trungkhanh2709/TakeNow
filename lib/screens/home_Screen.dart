@@ -16,6 +16,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+//khanh
 class _HomeScreenState extends State<HomeScreen> {
   late List<CameraDescription> cameras;
   late CameraController _controller;
