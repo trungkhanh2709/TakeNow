@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:camera/camera.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/api/apis.dart';
 import 'package:takenow/screens/listChat_Screen.dart';
 import 'package:takenow/screens/profile_screen.dart';
@@ -49,6 +51,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   Future<void> initializeUser() async {
     try {
+
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAuthentication googleAuth = await googleUser!.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      // Store the user's ID in the global variable
+      if (user != null) {
+        Globals.setGoogleUserId(user.uid);
+      }
+
       await APIs.getSelfInfo();
       if (mounted) {
         setState(() {});
@@ -93,13 +112,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_isCameraInitialized || !_controller.value.isInitialized) {
       return Scaffold(
         appBar: AppBar(
+          backgroundColor: Color(0xFF2F2E2E),
           title: const Text('Camera'),
         ),
         body: Center(
           child: CircularProgressIndicator(),
         ),
+        backgroundColor: Color(0xFF2F2E2E),
       );
     }
+
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
     double cameraPreviewSize = screenWidth;
@@ -119,42 +141,76 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Camera'),
+        backgroundColor: Color(0xFF2F2E2E),
+
         actions: [
-          IconButton(
-            icon: Icon(Icons.person),
-            onPressed: () async {
-              if (APIs.me != null){
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => ProfileScreen(user: APIs.me)),
-                );
-              }
-              else {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: Text('Google Account Not Found'),
-                    content: Text('Please sign in with your Google account.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text('OK'),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 20,
+                  top: 10,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0x5C968E8E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: SvgPicture.asset(
+                        'assets/icons/User_cicrle_light.svg',
+                        color: Colors.white, // Adjust color as needed
                       ),
-                    ],
+                      onPressed: () async {
+                        if (APIs.me != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => ProfileScreen(user: APIs.me)),
+                          );
+                        } else {
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: Text('Google Account Not Found'),
+                              content: Text('Please sign in with your Google account.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ),
-                );
-              }
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.chat),
-            onPressed: () {
-              Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => ListChatScreen()));
-            },
+                ),
+                Positioned(
+                  right: 20, // Căn lề phải
+                  top: 10,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0x5C968E8E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: SvgPicture.asset(
+                        'assets/icons/Chat_light.svg',
+                        color: Colors.white, // Adjust color as needed
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                            context, MaterialPageRoute(builder: (_) => ListChatScreen()));
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -214,39 +270,41 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       bottomNavigationBar: BottomAppBar(
-          color: Color(0xFF2F2E2E),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ViewPhotoScreen()),
-                  );
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Album',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    SizedBox(width: 5),
-                    SvgPicture.asset(
-                      'assets/icons/expanddown.svg',
-                      width: 24,
-                      height: 24,
-                      color: Colors.white,
-                    ),
-                    SizedBox(width: 40), // Space between icon and text
-                  ],
-                ),
+        color: Color(0xFF2F2E2E),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ViewPhotoScreen()),
+                );
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Album',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  SizedBox(width: 5),
+                  SvgPicture.asset(
+                    'assets/icons/expanddown.svg',
+                    width: 24,
+                    height: 24,
+                    color: Colors.white,
+                  ),
+                  SizedBox(width: 40), // Space between icon and text
+                ],
               ),
-            ],
-          )),
+            ),
+          ],
+        ),
+      ),
     );
   }
+
 
   void _onSwitchCamera() async {
     _currentCameraIndex = (_currentCameraIndex + 1) % cameras.length;

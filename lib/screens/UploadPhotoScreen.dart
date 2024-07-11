@@ -34,12 +34,14 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   late Animation<double> _fadeAnimation;
   late AnimationController _fadeController;
 
-
+  String userId = Globals.getGoogleUserId().toString();
   bool _uploadSuccess = false;
   bool _isLoading = false;
   bool _isDowloaded = false;
 
   int MaxLimitCharacter = 35;
+  Set<String> selectedFriends = {};
+  List<String> friendsList = [];
 
   @override
   void initState() {
@@ -49,6 +51,9 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+
+
+
 
     _withAnimation = Tween<double>(begin: 200, end: 200).animate(_controller);
     _shakeController = AnimationController(
@@ -95,7 +100,20 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       parent: _fadeController,
       curve: Curves.easeIn,
     );
+    fetchFriendsList();
+
   }
+  Future<void> fetchFriendsList() async {
+    String userId = Globals.getGoogleUserId().toString();
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      setState(() {
+        friendsList = List<String>.from(userDoc['friends']);
+      });
+    }
+  }
+
+
 
   @override
   void dispose() {
@@ -120,7 +138,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   }
 
   Future<bool> uploadImageToFirebase() async {
-    String userId = Globals.getGoogleUserId().toString();
+
     String caption = captionController.text.trim();
 
     if (_image == null) {
@@ -141,7 +159,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     });
     if (_image != null) {
       final bool? result =
-          await GallerySaver.saveImage(_image!.path, albumName: 'Takenow');
+      await GallerySaver.saveImage(_image!.path, albumName: 'Takenow');
     } else {
       log('No image to save');
     }
@@ -162,7 +180,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
         _uploadSuccess = true;
         _isLoading = false; // Hiển thị icon Upload_sucessfull.svg
       });
-_fadeController.forward();
+      _fadeController.forward();
       await Future.delayed(Duration(milliseconds: 1500)); // Đợi 1 giây
 
       Navigator.push(
@@ -175,6 +193,119 @@ _fadeController.forward();
         _isLoading = false;
       });
     }
+  }
+
+  Widget buildFriendsList() {
+    if (userId == null) {
+      log('User is not logged in');
+      return Center(child: Text('User is not logged in',));
+    }
+    log('Current User ID: $userId');
+
+    return StreamBuilder(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .snapshots(),
+      builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          log('No user document found.');
+          return Center(child: Text('No user data found.'));
+        }
+
+        final userDocument = snapshot.data!;
+        log('UserID test: ${userDocument.id}');
+        log('UserFields test: ${userDocument.data()}');
+        final List<dynamic> friendsList = userDocument['friends'] ?? [];
+
+        if (friendsList.isEmpty) {
+          log('Friends list is empty.');
+          return Center(child: Text('No friends found.'));
+        }
+
+        return StreamBuilder(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .where(FieldPath.documentId, whereIn: friendsList)
+              .snapshots(),
+          builder: (context, AsyncSnapshot<QuerySnapshot> friendsSnapshot) {
+            if (friendsSnapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+            if (friendsSnapshot.hasError) {
+              return Center(child: Text('Error: ${friendsSnapshot.error}'));
+            }
+
+            final friendsDocs = friendsSnapshot.data?.docs ?? [];
+            log('Friends documents count: ${friendsDocs.length}');
+
+            if (friendsDocs.isEmpty) {
+              log('No friends documents found.');
+              return Center(child: Text('No friends found.'));
+            }
+
+            return ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: friendsDocs.length,
+              itemBuilder: (context, index) {
+                final friendData = friendsDocs[index];
+
+
+                final isSelected = selectedFriends.contains(friendData.id);
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        selectedFriends.remove(friendData.id);
+                      } else {
+                        selectedFriends.add(friendData.id);
+                      }
+                    });
+                  },
+                  child: Container(
+
+                    width: 50,
+
+                    margin: EdgeInsets.all(4.0),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? Color(0xB815CA00) : Colors.transparent,
+                        width: 2.0,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: NetworkImage(friendData['image']),
+                          radius: 40,
+                        ),
+                        // SizedBox(height: 8.0),
+
+                        Text(
+                          friendData['name'],
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -196,108 +327,108 @@ _fadeController.forward();
                   _image == null
                       ? Text('No image selected.')
                       : Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(40.0),
-                              child: Image.file(
-                                _image!,
-                                height: 400.0,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(40.0),
+                        child: Image.file(
+                          _image!,
+                          height: 400.0,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 20,
+                        left: 20,
+                        right: 20,
+                        child: AnimatedBuilder(
+                          animation: _shakeAnimation,
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset: Offset(_shakeAnimation.value, 0),
+                              child: child,
+                            );
+                          },
+                          child: SizeTransition(
+                            sizeFactor: _withAnimation,
+                            axis: Axis.horizontal,
+                            child: Container(
+                              width: _captionWidth,
+                              height: 65,
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(30),
                               ),
-                            ),
-                            Positioned(
-                              bottom: 20,
-                              left: 20,
-                              right: 20,
-                              child: AnimatedBuilder(
-                                animation: _shakeAnimation,
-                                builder: (context, child) {
-                                  return Transform.translate(
-                                    offset: Offset(_shakeAnimation.value, 0),
-                                    child: child,
-                                  );
-                                },
-                                child: SizeTransition(
-                                  sizeFactor: _withAnimation,
-                                  axis: Axis.horizontal,
-                                  child: Container(
-                                    width: _captionWidth,
-                                    height: 65,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(30),
+                              padding: EdgeInsets.all(10.0),
+                              child: Center(
+                                child: SingleChildScrollView(
+                                  child: TextField(
+                                    controller: captionController,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
                                     ),
-                                    padding: EdgeInsets.all(10.0),
-                                    child: Center(
-                                      child: SingleChildScrollView(
-                                        child: TextField(
-                                          controller: captionController,
-                                          maxLines: 1,
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                          decoration: InputDecoration(
-                                            border: InputBorder.none,
-                                            hintText: 'Caption',
-                                            hintStyle: TextStyle(
-                                              color: Color(0xFF605F5F),
-                                            ),
-                                          ),
-                                        ),
+                                    decoration: InputDecoration(
+                                      border: InputBorder.none,
+                                      hintText: 'Caption',
+                                      hintStyle: TextStyle(
+                                        color: Color(0xFF605F5F),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                            if (_uploadSuccess)
-                              Positioned(
-                                top: 100,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: FadeTransition(
-                                    opacity: _fadeAnimation,
-                                    child: SvgPicture.asset(
-                                      'assets/icons/Upload_sucessfull.svg',
-                                      width: 200,
-                                      height: 200,
-                                      color: Colors.white,
-                                    ),
-                                  )
-
-                                ),
-                              ),
-                            if (_isDowloaded)
-                              Positioned(
-                                top: 150,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: SvgPicture.asset(
-                                    'assets/icons/Dowloaded.svg',
-                                    width: 200,
-                                    height: 200,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            if (_isLoading)
-                              Positioned(
-                                top: 150,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                    child: SizedBox(
-                                  width: 100,
-                                  height: 100,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                  ),
-                                )),
-                              ),
-                          ],
+                          ),
                         ),
+                      ),
+                      if (_uploadSuccess)
+                        Positioned(
+                          top: 100,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                              child: FadeTransition(
+                                opacity: _fadeAnimation,
+                                child: SvgPicture.asset(
+                                  'assets/icons/Upload_sucessfull.svg',
+                                  width: 200,
+                                  height: 200,
+                                  color: Colors.white,
+                                ),
+                              )
+
+                          ),
+                        ),
+                      if (_isDowloaded)
+                        Positioned(
+                          top: 150,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: SvgPicture.asset(
+                              'assets/icons/Dowloaded.svg',
+                              width: 200,
+                              height: 200,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      if (_isLoading)
+                        Positioned(
+                          top: 150,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                              child: SizedBox(
+                                width: 100,
+                                height: 100,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              )),
+                        ),
+                    ],
+                  ),
                   SizedBox(height: 30.0),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -339,7 +470,16 @@ _fadeController.forward();
                       ),
                     ],
                   ),
-                  SizedBox(width: 50.0),
+                  Positioned(
+                    // bottom: 40,
+                    // left: 30,
+                    child:
+                    Expanded(
+                      child: buildFriendsList(),
+
+                    ),)
+
+
                 ],
               ),
             ),
