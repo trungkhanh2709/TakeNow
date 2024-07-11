@@ -45,8 +45,6 @@ dependencies:
   vibration: ^1.9.0
   gallery_saver: ^2.3.0
 
-
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -78,3 +76,6 @@ flutter:
     - assets/icons/Close_round.svg
     - assets/icons/Dowloaded.svg
     - assets/icons/Upload_sucessfull.svg
+    - assets/icons/Sort_random_light.svg
+    - assets/icons/Chat_light.svg
+    - assets/icons/emoji-add-svgrepo-com 1.svg

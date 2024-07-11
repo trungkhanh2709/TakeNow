@@ -31,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
   double _zoomSpeedMultiplier = 0.008;
   int _currentCameraIndex = 0;
 
-
   //click profile
 
   @override
@@ -39,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     initializeCamera();
     initializeUser();
-
   }
 
   @override
@@ -47,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _controller.dispose();
     super.dispose();
   }
+
   Future<void> initializeUser() async {
     try {
       await APIs.getSelfInfo();
@@ -58,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Handle error initializing user
     }
   }
+
   Future<void> initializeCamera() async {
     cameras = await availableCameras();
     _controller = CameraController(
@@ -124,13 +124,13 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.person),
             onPressed: () async {
-              if (APIs.me != null){
+              if (APIs.me != null) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => ProfileScreen(user: APIs.me)),
+                  MaterialPageRoute(
+                      builder: (_) => ProfileScreen(user: APIs.me)),
                 );
-              }
-              else {
+              } else {
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
@@ -166,7 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               margin: EdgeInsets.only(top: 100.0),
               width: cameraPreviewSize,
-              height: cameraPreviewSize,  // Keeping width and height same for 1:1 aspect ratio
+              height:
+                  cameraPreviewSize, // Keeping width and height same for 1:1 aspect ratio
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(40.0),
                 child: OverflowBox(
@@ -192,7 +193,8 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           IconButton(
-            icon: SvgPicture.asset('assets/icons/lightning_duotone_line.svg', width: 50, height: 55),
+            icon: SvgPicture.asset('assets/icons/lightning_duotone_line.svg',
+                width: 50, height: 55),
             onPressed: _onToggleFlash,
           ),
           Container(
@@ -209,7 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             onPressed: _onSwitchCamera,
-            icon: SvgPicture.asset('assets/icons/Camera_light.svg', width: 50, height: 55),
+            icon: SvgPicture.asset('assets/icons/Camera_light.svg',
+                width: 50, height: 55),
           ),
         ],
       ),
@@ -296,18 +299,22 @@ class _HomeScreenState extends State<HomeScreen> {
         // Ensure the image has a 1:1 aspect ratio
         img.Image? image = img.decodeImage(imageFile.readAsBytesSync());
         if (image != null) {
-          int minLength = image.width < image.height ? image.width : image.height;
+          int minLength =
+              image.width < image.height ? image.width : image.height;
           int offsetX = (image.width - minLength) ~/ 2;
           int offsetY = (image.height - minLength) ~/ 2;
-          img.Image croppedImage = img.copyCrop(image, x: offsetX, y: offsetY, width: minLength, height: minLength);
+          img.Image croppedImage = img.copyCrop(image,
+              x: offsetX, y: offsetY, width: minLength, height: minLength);
 
           // Save the cropped image to a temporary file
-          File croppedFile = await imageFile.writeAsBytes(img.encodeJpg(croppedImage));
+          File croppedFile =
+              await imageFile.writeAsBytes(img.encodeJpg(croppedImage));
 
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => UploadPhotoScreen(imagePath: croppedFile.path),
+              builder: (context) =>
+                  UploadPhotoScreen(imagePath: croppedFile.path),
             ),
           );
         } else {
