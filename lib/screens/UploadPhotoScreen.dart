@@ -137,21 +137,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     });
   }
 
-  Future<bool> uploadImageToFirebase() async {
-
-    String caption = captionController.text.trim();
-
-    if (_image == null) {
-      log('No image selected');
-      return false;
-    } else {
-      await APIs.upLoadPhoto(caption, userId, _image!);
-      setState(() {
-        _uploadSuccess = true;
-      });
-      return true;
-    }
-  }
 
   void DownloadImage() async {
     setState(() {
@@ -174,14 +159,14 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       _isLoading = true;
     });
 
-    bool success = await uploadImageToFirebase();
+    bool success = await uploadImageToFirebase(selectedFriends);
     if (success) {
       setState(() {
         _uploadSuccess = true;
-        _isLoading = false; // Hiển thị icon Upload_sucessfull.svg
+        _isLoading = false; // Show Upload_successful.svg icon
       });
       _fadeController.forward();
-      await Future.delayed(Duration(milliseconds: 1500)); // Đợi 1 giây
+      await Future.delayed(Duration(milliseconds: 1500)); // Wait 1.5 seconds
 
       Navigator.push(
         context,
@@ -192,6 +177,21 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<bool> uploadImageToFirebase(Set<String> selectedFriends) async {
+    String caption = captionController.text.trim();
+
+    if (_image == null) {
+      log('No image selected');
+      return false;
+    } else {
+      await APIs.upLoadPhoto(caption, userId, _image!, selectedFriends);
+      setState(() {
+        _uploadSuccess = true;
+      });
+      return true;
     }
   }
 
@@ -250,13 +250,12 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
               return Center(child: Text('No friends found.'));
             }
 
+
             return ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: friendsDocs.length,
               itemBuilder: (context, index) {
                 final friendData = friendsDocs[index];
-
-
                 final isSelected = selectedFriends.contains(friendData.id);
 
                 return GestureDetector(
@@ -270,30 +269,30 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                     });
                   },
                   child: Container(
-
-                    width: 50,
-
                     margin: EdgeInsets.all(4.0),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected ? Color(0xB815CA00) : Colors.transparent,
-                        width: 2.0,
-                      ),
-                    ),
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          backgroundImage: NetworkImage(friendData['image']),
-                          radius: 40,
+                        Container(
+                          width: 50, // Adjusted to fit the CircleAvatar properly
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? Color(0xB815CA00) : Colors.transparent,
+                              width: 3.0,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            backgroundImage: NetworkImage(friendData['image']),
+                            radius: 38, // Adjusted to fit within the container
+                          ),
                         ),
-                        // SizedBox(height: 8.0),
-
+                        SizedBox(height: 8.0),
                         Text(
                           friendData['name'],
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w700
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -302,6 +301,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                 );
               },
             );
+
           },
         );
       },

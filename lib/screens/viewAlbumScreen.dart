@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth package
 import 'package:takenow/widgets/album_user_cart.dart';
 import 'package:takenow/screens/viewPhotoFromAlbum.dart'; // Import your ViewPhotoFromAlbum screen
 
@@ -11,15 +12,23 @@ class ViewAlbumScreen extends StatefulWidget {
 }
 
 class _ViewAlbumScreenState extends State<ViewAlbumScreen> {
+  User? currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    currentUser = FirebaseAuth.instance.currentUser; // Get the current user
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Album'),
+        title: const Text('Album'),
       ),
       backgroundColor: const Color(0xFF2F2E2E),
       body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 11.0),
+        padding: const EdgeInsets.symmetric(horizontal: 11.0),
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collectionGroup('post_image')
@@ -32,12 +41,19 @@ class _ViewAlbumScreenState extends State<ViewAlbumScreen> {
 
             switch (snapshot.connectionState) {
               case ConnectionState.waiting:
-                return Center(child: CircularProgressIndicator());
+                return const Center(child: CircularProgressIndicator());
               default:
-                List<DocumentSnapshot> documents = snapshot.data!.docs;
+                if (!snapshot.hasData || currentUser == null) {
+                  return const Center(child: Text('No data available'));
+                }
+
+                List<DocumentSnapshot> documents = snapshot.data!.docs.where((document) {
+                  List<dynamic> visibleTo = document['visibleTo'];
+                  return visibleTo.contains(currentUser!.uid);
+                }).toList();
 
                 return GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     mainAxisSpacing: 8.0,
                     crossAxisSpacing: 8.0,

@@ -75,19 +75,19 @@ class APIs {
   }
 
   static Future<void> postPhoto(
-       String caption, String imageUrl, PostType type) async {
-    //message sending time (also used as id)
+      String caption, String imageUrl, PostType type, Set<String> selectedFriends) async {
+    // Post sending time (also used as ID)
     final time = DateTime.now().millisecondsSinceEpoch.toString();
 
-    //message to send
+    // Post to send
     final PostUser post = PostUser(
         caption: caption,
         imageUrl: imageUrl,
         timestamp: time,
         userId: user.uid,
-        type: type
+        type: type,
+        visibleTo: selectedFriends.toList() // Add selected friends here
     );
-
 
     final ref = firestore
         .collection('posts')
@@ -157,19 +157,20 @@ class APIs {
     log('Profile picture updated successfully');
   }
 
-  static Future<void> upLoadPhoto(String caption,String userId,File file) async {
+  static Future<void> upLoadPhoto(String caption, String userId, File file, Set<String> selectedFriends) async {
     final ext = file.path.split('.').last;
     final ref = storage.ref().child('images/${getConversationID(userId)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
     await ref
         .putFile(file, SettableMetadata(contentType: 'image/$ext'))
         .then((p0) {
-
+      // Image uploaded
     });
 
-    //updating image in firestore database
+    // Get image URL
     final imageUrl = await ref.getDownloadURL();
-    await postPhoto(caption, imageUrl, PostType.image);
+    await postPhoto(caption, imageUrl, PostType.image, selectedFriends);
   }
+
 
   //for getting specific user info
   static Stream<QuerySnapshot<Map<String, dynamic>>> getUserInfo(ChatUser chatUser) {

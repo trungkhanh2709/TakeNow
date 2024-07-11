@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // Import flutter_svg package
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'; // Import emoji_picker_flutter package
+import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth package
 import 'package:takenow/main.dart';
 import 'package:takenow/widgets/post_user_card.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart'; // Import trang ViewAlbum
@@ -18,6 +19,14 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   PageController _pageController = PageController();
   List<DocumentSnapshot>? _posts;
   bool _showChatInput = false;
+
+  User? currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    currentUser = FirebaseAuth.instance.currentUser; // Get the current user
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +54,14 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
               case ConnectionState.waiting:
                 return const Center(child: CircularProgressIndicator());
               default:
-                _posts = snapshot.data?.docs;
+                if (snapshot.hasData && currentUser != null) {
+                  _posts = snapshot.data?.docs.where((document) {
+                    List<dynamic> visibleTo = document['visibleTo'];
+                    return visibleTo.contains(currentUser!.uid);
+                  }).toList();
+                } else {
+                  _posts = [];
+                }
                 return Column(
                   children: [
                     Expanded(
@@ -66,8 +82,7 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                               imageUrl: imageUrl,
                               caption: caption,
                               userId: userId,
-                              timestamp: Timestamp.fromMillisecondsSinceEpoch(
-                                  timestampInt),
+                              timestamp: Timestamp.fromMillisecondsSinceEpoch(timestampInt),
                               pageController: _pageController,
                               index: index,
                             ),
@@ -113,17 +128,17 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                                 child: _showChatInput
                                     ? _chatInput()
                                     : EmotionSelector(
-                                        selectedEmotion: selectedEmotion,
-                                        onEmotionSelected: onEmotionSelected,
-                                        onSendMessage: () {
-                                          setState(() {
-                                            _showChatInput = true;
-                                          });
-                                        },
-                                        onOpenEmojiPicker: () {
-                                          _openEmojiPicker(context);
-                                        },
-                                      ),
+                                  selectedEmotion: selectedEmotion,
+                                  onEmotionSelected: onEmotionSelected,
+                                  onSendMessage: () {
+                                    setState(() {
+                                      _showChatInput = true;
+                                    });
+                                  },
+                                  onOpenEmojiPicker: () {
+                                    _openEmojiPicker(context);
+                                  },
+                                ),
                               ),
                               const SizedBox(width: 15.0),
                               Visibility(

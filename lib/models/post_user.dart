@@ -5,7 +5,7 @@ class PostUser {
     required this.timestamp,
     required this.userId,
     required this.type,
-
+    required this.visibleTo,
   });
 
   late final String caption;
@@ -13,15 +13,15 @@ class PostUser {
   late final String timestamp;
   late final String userId;
   late final PostType type;
-
+  late final List<String> visibleTo;
 
   PostUser.fromJson(Map<String, dynamic> json) {
     caption = json['caption'].toString();
     imageUrl = json['imageUrl'].toString();
+    timestamp = json['timestamp'].toString();
     userId = json['userId'].toString();
     type = json['type'].toString() == PostType.image.name ? PostType.image : PostType.text;
-
-    timestamp = json['timestamp'].FieldValue.serverTimestamp().toString();
+    visibleTo = List<String>.from(json['visibleTo']);
   }
 
   Map<String, dynamic> toJson() {
@@ -31,7 +31,7 @@ class PostUser {
     data['timestamp'] = timestamp;
     data['userId'] = userId;
     data['type'] = type.name;
-
+    data['visibleTo'] = visibleTo;
     return data;
   }
 }
