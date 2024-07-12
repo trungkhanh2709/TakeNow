@@ -15,8 +15,7 @@ import '../api/apis.dart';
 
 class UploadPhotoScreen extends StatefulWidget {
   final String imagePath;
-  const UploadPhotoScreen({Key? key, required this.imagePath})
-      : super(key: key);
+  const UploadPhotoScreen({Key? key, required this.imagePath}) : super(key: key);
 
   @override
   _UploadPhotoScreenState createState() => _UploadPhotoScreenState();
@@ -40,7 +39,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   bool _isDowloaded = false;
 
   int MaxLimitCharacter = 35;
-  Set<String> selectedFriends = {};
+  Set<String> selectedFriends = {"all"};
   List<String> friendsList = [];
 
   @override
@@ -51,9 +50,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-
-
-
 
     _withAnimation = Tween<double>(begin: 200, end: 200).animate(_controller);
     _shakeController = AnimationController(
@@ -101,19 +97,21 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       curve: Curves.easeIn,
     );
     fetchFriendsList();
-
   }
+
   Future<void> fetchFriendsList() async {
     String userId = Globals.getGoogleUserId().toString();
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    log('fetchFr'+ userId);
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
     if (userDoc.exists) {
       setState(() {
         friendsList = List<String>.from(userDoc['friends']);
       });
     }
   }
-
-
 
   @override
   void dispose() {
@@ -136,7 +134,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       }
     });
   }
-
 
   void DownloadImage() async {
     setState(() {
@@ -187,6 +184,11 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       log('No image selected');
       return false;
     } else {
+      // Nếu "all" được chọn, gửi ảnh đến tất cả bạn bè
+      if (selectedFriends.contains('all')) {
+        selectedFriends.clear();
+        selectedFriends.addAll(friendsList);
+      }
       await APIs.upLoadPhoto(caption, userId, _image!, selectedFriends);
       setState(() {
         _uploadSuccess = true;
@@ -195,33 +197,34 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     }
   }
 
+
   Widget buildFriendsList() {
     if (userId == null) {
       log('User is not logged in');
-      return Center(child: Text('User is not logged in',));
+      return Center(child: Text('User is not logged in'));
     }
     log('Current User ID: $userId');
 
-    return StreamBuilder(
+    return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
           .snapshots(),
-      builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (context, userSnapshot) {
+        if (userSnapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
         }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+        if (userSnapshot.hasError) {
+          return Center(child: Text('Error: ${userSnapshot.error}'));
         }
-        if (!snapshot.hasData || !snapshot.data!.exists) {
+        if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
           log('No user document found.');
           return Center(child: Text('No user data found.'));
         }
 
-        final userDocument = snapshot.data!;
-        log('UserID test: ${userDocument.id}');
-        log('UserFields test: ${userDocument.data()}');
+        final userDocument = userSnapshot.data!;
+        log('UserID: ${userDocument.id}');
+        log('UserFields: ${userDocument.data()}');
         final List<dynamic> friendsList = userDocument['friends'] ?? [];
 
         if (friendsList.isEmpty) {
@@ -229,12 +232,14 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
           return Center(child: Text('No friends found.'));
         }
 
-        return StreamBuilder(
+        friendsList.insert(0, 'all');
+        log('friendsList ' + friendsList.toString());
+        return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
-              .where(FieldPath.documentId, whereIn: friendsList)
+              .where(FieldPath.documentId, whereIn: friendsList.sublist(1)) // Skip the 'all' element for the query
               .snapshots(),
-          builder: (context, AsyncSnapshot<QuerySnapshot> friendsSnapshot) {
+          builder: (context, friendsSnapshot) {
             if (friendsSnapshot.connectionState == ConnectionState.waiting) {
               return Center(child: CircularProgressIndicator());
             }
@@ -245,26 +250,46 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
             final friendsDocs = friendsSnapshot.data?.docs ?? [];
             log('Friends documents count: ${friendsDocs.length}');
 
-            if (friendsDocs.isEmpty) {
-              log('No friends documents found.');
-              return Center(child: Text('No friends found.'));
-            }
-
+            // Build the list of friend items, starting with the 'all' item
+            final friendItems = [
+              {
+                'id': 'all',
+                'name': 'All',
+                'image': 'assets/icons/Group_light.svg',
+              },
+              ...friendsDocs.map((doc) => {
+                'id': doc.id,
+                'name': doc['name'],
+                'image': doc['image'],
+              }),
+            ];
 
             return ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: friendsDocs.length,
+              itemCount: friendItems.length,
               itemBuilder: (context, index) {
-                final friendData = friendsDocs[index];
-                final isSelected = selectedFriends.contains(friendData.id);
+                final friendData = friendItems[index];
+                final isSelected = selectedFriends.contains(friendData['id']);
 
                 return GestureDetector(
                   onTap: () {
                     setState(() {
-                      if (isSelected) {
-                        selectedFriends.remove(friendData.id);
+                      if (friendData['id'] == 'all') {
+                        if (selectedFriends.contains('all')) {
+                          selectedFriends.remove('all');
+                        } else {
+                          selectedFriends.clear();
+                          selectedFriends.add('all');
+                        }
                       } else {
-                        selectedFriends.add(friendData.id);
+                        if (selectedFriends.contains('all')) {
+                          selectedFriends.remove('all');
+                        }
+                        if (isSelected) {
+                          selectedFriends.remove(friendData['id']);
+                        } else {
+                          selectedFriends.add(friendData['id']);
+                        }
                       }
                     });
                   },
@@ -273,7 +298,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                     child: Column(
                       children: [
                         Container(
-                          width: 50, // Adjusted to fit the CircleAvatar properly
+                          width: 50,
                           height: 50,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -283,8 +308,10 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                             ),
                           ),
                           child: CircleAvatar(
-                            backgroundImage: NetworkImage(friendData['image']),
-                            radius: 38, // Adjusted to fit within the container
+                            backgroundImage: friendData['id'] == 'all'
+                                ? AssetImage(friendData['image'])
+                                : NetworkImage(friendData['image']),
+                            radius: 38,
                           ),
                         ),
                         SizedBox(height: 8.0),
@@ -301,12 +328,14 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                 );
               },
             );
-
           },
         );
       },
     );
   }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -395,9 +424,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                                   height: 200,
                                   color: Colors.white,
                                 ),
-                              )
-
-                          ),
+                              )),
                         ),
                       if (_isDowloaded)
                         Positioned(
@@ -470,20 +497,14 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                       ),
                     ],
                   ),
-                  Positioned(
-                    // bottom: 40,
-                    // left: 30,
-                    child:
-                    Expanded(
-                      child: buildFriendsList(),
-
-                    ),)
-
-
+                  SizedBox(height: 20.0),
+                  Expanded(
+                    child: buildFriendsList(),
+                  ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );

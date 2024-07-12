@@ -113,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: Color(0xFF2F2E2E),
-          title: const Text('Camera'),
+
         ),
         body: Center(
           child: CircularProgressIndicator(),

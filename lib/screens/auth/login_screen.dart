@@ -33,8 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     Dialogs.showProcessBar(context);
     _signInWithGoogle().then((user) async {
       if (user != null) {
-        log('\nUser: ${user.user}');
-        log('\nUserAdditionalInfor: ${user.additionalUserInfo}');
+
         if ((await APIs.userExists())) {
           Navigator.pushReplacement(
               context, MaterialPageRoute(builder: (_) => const HomeScreen()));
