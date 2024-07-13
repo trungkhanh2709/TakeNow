@@ -1,8 +1,15 @@
+import 'dart:developer';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // Import flutter_svg package
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'; // Import emoji_picker_flutter package
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth package
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/main.dart';
 import 'package:takenow/widgets/post_user_card.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart'; // Import trang ViewAlbum
@@ -19,12 +26,14 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   PageController _pageController = PageController();
   List<DocumentSnapshot>? _posts;
   bool _showChatInput = false;
-
+  String imageUrl ='';
   User? currentUser;
+  String? userID = Globals.getGoogleUserId();
 
   @override
   void initState() {
     super.initState();
+
     currentUser = FirebaseAuth.instance.currentUser; // Get the current user
   }
 
@@ -57,7 +66,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                 if (snapshot.hasData && currentUser != null) {
                   _posts = snapshot.data?.docs.where((document) {
                     List<dynamic> visibleTo = document['visibleTo'];
-                    return visibleTo.contains(currentUser!.uid);
+                    String postUserId = document['userId'];
+                    return visibleTo.contains(currentUser!.uid) || postUserId == currentUser!.uid;
                   }).toList();
                 } else {
                   _posts = [];
@@ -71,7 +81,7 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                         itemCount: _posts?.length ?? 0,
                         itemBuilder: (context, index) {
                           DocumentSnapshot document = _posts![index];
-                          String imageUrl = document['imageUrl'];
+                          imageUrl = document['imageUrl'];
                           String caption = document['caption'];
                           String userId = document['userId'];
                           String timestamp = document['timestamp'];
@@ -223,6 +233,94 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
     );
   }
 
+
+
+  Future<void> deletePost(String imageUrl, String currentUserId) async {
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+    // Query the post with the given imageUrl
+    QuerySnapshot querySnapshot = await _firestore
+        .collectionGroup('post_image')
+        .where('imageUrl', isEqualTo: imageUrl)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      DocumentSnapshot postSnapshot = querySnapshot.docs.first;
+      Map<String, dynamic> postData = postSnapshot.data() as Map<String, dynamic>;
+
+      String postUserId = postData['userId'];
+      List<dynamic> visibleTo = postData['visibleTo'];
+
+      log('postSnapshot: $postSnapshot');
+      log('postSnapshot id: ${postSnapshot.id}');
+
+      if (postUserId == currentUserId) {
+        // Show confirmation dialog
+        bool confirm = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Confirm Deletion'),
+            content: Text('No one can see your post'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('OK'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm) {
+          try {
+            // Delete the post from the correct collection
+            await postSnapshot.reference.delete();
+            log("Post deleted successfully");
+          } catch (e) {
+            log("Failed to delete post: $e");
+          }
+        }
+      } else {
+        // Show confirmation dialog
+        bool confirm = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Confirm Deletion'),
+            content: Text('Delete on your side'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('OK'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm) {
+          try {
+            // Remove the current userId from the visibleTo array
+            visibleTo.remove(currentUserId);
+            await postSnapshot.reference.update({
+              'visibleTo': visibleTo,
+            });
+            log("Visibility updated successfully");
+          } catch (e) {
+            log("Failed to update visibility: $e");
+          }
+        }
+      }
+    } else {
+      log("No post found with the given imageUrl");
+    }
+  }
+
   void _showSortMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -235,9 +333,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
               ListTile(
                 leading: Icon(Icons.download),
                 title: Text('Download'),
-                onTap: () {
+                onTap: () async {
                   // Xử lý khi người dùng nhấn Download
-                  Navigator.pop(context);
                 },
               ),
               ListTile(
@@ -251,8 +348,9 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
               ListTile(
                 leading: Icon(Icons.delete),
                 title: Text('Xóa'),
-                onTap: () {
-                  // Xử lý khi người dùng nhấn Xóa
+                onTap: () async {
+                  await deletePost(imageUrl, userID!);
+
                   Navigator.pop(context);
                 },
               ),

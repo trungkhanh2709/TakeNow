@@ -232,12 +232,13 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
           return Center(child: Text('No friends found.'));
         }
 
-        friendsList.insert(0, 'all');
+        friendsList.insert(0, 'all'); // Thêm "all" vào đầu danh sách bạn bè
         log('friendsList ' + friendsList.toString());
+
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
-              .where(FieldPath.documentId, whereIn: friendsList.sublist(1)) // Skip the 'all' element for the query
+              .where(FieldPath.documentId, whereIn: friendsList)
               .snapshots(),
           builder: (context, friendsSnapshot) {
             if (friendsSnapshot.connectionState == ConnectionState.waiting) {
@@ -257,7 +258,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                 'name': 'All',
                 'image': 'assets/icons/Group_light.svg',
               },
-              ...friendsDocs.map((doc) => {
+              ...friendsDocs.where((doc) => doc.id != userId).map((doc) => { // Loại bỏ người dùng hiện tại
                 'id': doc.id,
                 'name': doc['name'],
                 'image': doc['image'],
