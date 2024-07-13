@@ -11,7 +11,7 @@ class ChatUser {
     required this.pushToken,
     List<String>? friends,
     List<String>? friendRequests,
-  }) : friends = friends ?? [],
+  })   : friends = friends ?? [],
         friendRequests = friendRequests ?? [];
 
   late String image;
