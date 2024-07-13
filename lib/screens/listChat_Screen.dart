@@ -1,12 +1,7 @@
-import 'dart:convert';
-import 'dart:developer';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:takenow/api/apis.dart';
-import 'package:takenow/main.dart';
 import 'package:takenow/models/chat_user.dart';
 import 'package:takenow/widgets/chat_user_card.dart';
 
@@ -25,121 +20,122 @@ class _ListChatScreenState extends State<ListChatScreen> {
   @override
   void initState() {
     super.initState();
-    // APIs.getSelfInfo();
     _getFriends();
   }
 
   @override
   Widget build(BuildContext context) {
+
     return GestureDetector(
-      //for hidding keyboard when a tap is detected on screen
       onTap: () => FocusScope.of(context).unfocus(),
       child: WillPopScope(
-        //if search is on & back button is pressed then close search
-        //or else simple close current screen on back button click
         onWillPop: () {
           if (_isSearching) {
             setState(() {
-              _isSearching = !_isSearching;
+              _isSearching = false;
             });
-            return Future.value(false);
+            return Future.value(false); // Không đóng màn hình khi đang tìm kiếm
           } else {
-            return Future.value(true);
+            return Future.value(true); // Đóng màn hình khi không tìm kiếm
           }
         },
         child: Scaffold(
+          backgroundColor: Color(0xFF2F2E2E), // Màu nền cho Scaffold và AppBar
           appBar: AppBar(
-            leading: const Icon(CupertinoIcons.home),
+            backgroundColor: Color(0xFF2F2E2E), // Màu nền cho AppBar
+            leading: IconButton(
+              icon: SvgPicture.asset(
+                'assets/icons/Refund_back_light.svg',
+                width: 30,
+                height: 30,
+              ),
+              onPressed: () {
+                Navigator.pop(context); // Quay về màn hình trước đó (homescreen)
+              },
+            ),
             title: _isSearching
                 ? TextField(
-                    decoration: const InputDecoration(
-                        border: InputBorder.none, hintText: 'Name, Email,...'),
-                    autofocus: true,
-                    style: const TextStyle(fontSize: 17, letterSpacing: 0.5),
-                    //when search text changes then updated search list
-                    onChanged: (val) {
-                      //search logic
-                      _searchList.clear();
-
-                      for (var i in _list) {
-                        if (i.name.toLowerCase().contains(val.toLowerCase()) ||
-                            i.email.toLowerCase().contains(val.toLowerCase())) {
-                          _searchList.add(i);
-                        }
-                        setState(() {
-                          _searchList;
-                        });
-                      }
-                    },
-                  )
-                : const Text('TakeNow2'),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Name, Email,...',
+                hintStyle: TextStyle(color: Colors.white),
+              ),
+              autofocus: true,
+              style: const TextStyle(fontSize: 17, letterSpacing: 0.5, color: Colors.white),
+              onChanged: (val) {
+                _searchList.clear();
+                for (var i in _list) {
+                  if (i.name.toLowerCase().contains(val.toLowerCase()) ||
+                      i.email.toLowerCase().contains(val.toLowerCase())) {
+                    _searchList.add(i);
+                  }
+                }
+                setState(() {}); // Cập nhật lại UI khi có thay đổi trong danh sách tìm kiếm
+              },
+            )
+                : const Text(
+              '',
+              style: TextStyle(fontSize: 18, color: Colors.white),
+            ),
             actions: [
-              //search user button
               IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = !_isSearching;
-                    });
-                  },
-                  icon: Icon(_isSearching
-                      ? CupertinoIcons.clear_circled_solid
-                      : Icons.search)
+                icon: Icon(
+                  _isSearching ? Icons.clear : Icons.search,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isSearching = !_isSearching; // Đảo ngược trạng thái tìm kiếm
+                    if (!_isSearching) {
+                      _searchList.clear(); // Xóa danh sách tìm kiếm khi thoát khỏi trạng thái tìm kiếm
+                    }
+                  });
+                },
               ),
             ],
           ),
-
-          //floating button to add new user
-          floatingActionButton: Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: FloatingActionButton(
-                onPressed: () async {
-                  await APIs.auth.signOut();
-                  await GoogleSignIn().signOut();
-                },
-                child: const Icon(Icons.add_comment_rounded)),
-          ),
-
           body: StreamBuilder<DocumentSnapshot>(
             stream: APIs.firestore.collection('users').doc(APIs.auth.currentUser?.uid).snapshots(),
-            builder: (context, snapshot){
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            final userDoc = snapshot.data!;
-            final userData = userDoc.data() as Map<String, dynamic>?; // Chuyển đổi kiểu dữ liệu
-            final friends = userData?['friends'] is List
-                ? List<String>.from(userData?['friends'] ?? [])
-                : [];
-
-            if (friends.isEmpty) {
-            return const Center(
-            child: Text('No Connection Found!', style: TextStyle(fontSize: 20)),
-            );
-            }
-            return ListView.builder(
-            itemCount: _isSearching ? _searchList.length : _list.length,
-            padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * .01),
-            physics: const BouncingScrollPhysics(),
-            itemBuilder: (context, index) {
-            final friendId = friends[index];
-
-            return FutureBuilder<DocumentSnapshot>(
-            future: APIs.firestore.collection('users').doc(friendId).get(),
             builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-            return const ListTile(
-            title: Text('Đang tải...'),
-            );
-            }
+              if (!snapshot.hasData) {
+                return Center(child: CircularProgressIndicator());
+              }
 
-            final friend = snapshot.data!;
-            final chatUser = ChatUser.fromJson(friend.data() as Map<String, dynamic>);
-            return ChatUserCard(user: chatUser);
-            },
-            );
-            },
-            );
+              final userDoc = snapshot.data!;
+              final userData = userDoc.data() as Map<String, dynamic>?; // Dữ liệu người dùng
+              final friends = userData?['friends'] is List
+                  ? List<String>.from(userData?['friends'] ?? [])
+                  : [];
+
+              if (friends.isEmpty) {
+                return Center(
+                  child: Text('No Connection Found!', style: TextStyle(fontSize: 20, color: Colors.white)),
+                );
+              }
+
+              return ListView.builder(
+                itemCount: _isSearching ? _searchList.length : _list.length,
+                padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.01),
+                physics: BouncingScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final friendId = friends[index];
+
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: APIs.firestore.collection('users').doc(friendId).get(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return ListTile(
+                          title: Text('Đang tải...', style: TextStyle(color: Colors.white)),
+                        );
+                      }
+
+                      final friend = snapshot.data!;
+                      final chatUser = ChatUser.fromJson(friend.data() as Map<String, dynamic>);
+                      return ChatUserCard(user: chatUser);
+                    },
+                  );
+                },
+              );
             },
           ),
         ),
@@ -148,13 +144,14 @@ class _ListChatScreenState extends State<ListChatScreen> {
   }
 
 
+  // Hàm lấy danh sách bạn bè từ Firestore
   Future<void> _getFriends() async {
     try {
       final currentUser = APIs.auth.currentUser;
       if (currentUser == null) return;
 
       final userDoc = await APIs.firestore.collection('users').doc(currentUser.uid).get();
-      final userData = userDoc.data() as Map<String, dynamic>?; // Chuyển đổi kiểu dữ liệu
+      final userData = userDoc.data() as Map<String, dynamic>?; // Dữ liệu người dùng
       final friendIds = userData?['friends'] is List
           ? List<String>.from(userData?['friends'] ?? [])
           : [];
@@ -162,7 +159,7 @@ class _ListChatScreenState extends State<ListChatScreen> {
       final friendDocs = await Future.wait(friendIds.map((id) => APIs.firestore.collection('users').doc(id).get()));
       _list = friendDocs.map((doc) => ChatUser.fromJson(doc.data()!)).toList();
 
-      setState(() {});
+      setState(() {}); // Cập nhật lại UI sau khi có dữ liệu
     } catch (e) {
       print('Error getting friends: $e');
     }

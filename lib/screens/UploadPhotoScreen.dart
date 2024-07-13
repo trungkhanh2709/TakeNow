@@ -340,8 +340,10 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+
+  return Scaffold(
+
+        appBar: AppBar(
         title: Text('Upload Photo'),
       ),
       backgroundColor: Color(0xFF2F2E2E),

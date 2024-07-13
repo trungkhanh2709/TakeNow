@@ -39,6 +39,7 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       backgroundColor: const Color(0xFF2F2E2E),
       body: GestureDetector(
