@@ -8,6 +8,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:takenow/Class/Globals.dart';
+import 'package:takenow/screens/CreateGroupScreen.dart';
 import 'package:takenow/screens/home_Screen.dart';
 import 'package:vibration/vibration.dart';
 
@@ -15,7 +16,8 @@ import '../api/apis.dart';
 
 class UploadPhotoScreen extends StatefulWidget {
   final String imagePath;
-  const UploadPhotoScreen({Key? key, required this.imagePath}) : super(key: key);
+  const UploadPhotoScreen({Key? key, required this.imagePath})
+      : super(key: key);
 
   @override
   _UploadPhotoScreenState createState() => _UploadPhotoScreenState();
@@ -41,6 +43,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   int MaxLimitCharacter = 35;
   Set<String> selectedFriends = {"all"};
   List<String> friendsList = [];
+  Set<String> selectedGroups = {};
 
   @override
   void initState() {
@@ -101,11 +104,9 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
 
   Future<void> fetchFriendsList() async {
     String userId = Globals.getGoogleUserId().toString();
-    log('fetchFr'+ userId);
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .get();
+    log('fetchFr' + userId);
+    DocumentSnapshot userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
     if (userDoc.exists) {
       setState(() {
         friendsList = List<String>.from(userDoc['friends']);
@@ -141,7 +142,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     });
     if (_image != null) {
       final bool? result =
-      await GallerySaver.saveImage(_image!.path, albumName: 'Takenow');
+          await GallerySaver.saveImage(_image!.path, albumName: 'Takenow');
     } else {
       log('No image to save');
     }
@@ -156,7 +157,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       _isLoading = true;
     });
 
-    bool success = await uploadImageToFirebase(selectedFriends);
+    bool success = await uploadImageToFirebase(selectedFriends, selectedGroups);
     if (success) {
       setState(() {
         _uploadSuccess = true;
@@ -177,7 +178,8 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     }
   }
 
-  Future<bool> uploadImageToFirebase(Set<String> selectedFriends) async {
+
+  Future<bool> uploadImageToFirebase(Set<String> selectedFriends, Set<String> selectedGroups) async {
     String caption = captionController.text.trim();
 
     if (_image == null) {
@@ -189,14 +191,24 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
         selectedFriends.clear();
         selectedFriends.addAll(friendsList);
       }
-      await APIs.upLoadPhoto(caption, userId, _image!, selectedFriends);
+
+      // Gửi ảnh đến tất cả các thành viên của nhóm đã chọn
+      Set<String> allRecipients = Set.from(selectedFriends);
+      for (String groupId in selectedGroups) {
+        DocumentSnapshot groupDoc = await FirebaseFirestore.instance.collection('groups').doc(groupId).get();
+        if (groupDoc.exists) {
+          List<String> groupMembers = List<String>.from(groupDoc['members']);
+          allRecipients.addAll(groupMembers);
+        }
+      }
+
+      await APIs.upLoadPhoto(caption, userId, _image!, allRecipients);
       setState(() {
         _uploadSuccess = true;
       });
       return true;
     }
   }
-
 
   Widget buildFriendsList() {
     if (userId == null) {
@@ -232,12 +244,13 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
           return Center(child: Text('No friends found.'));
         }
 
-        friendsList.insert(0, 'all');
+        friendsList.insert(0, 'all'); // Thêm "all" vào đầu danh sách bạn bè
         log('friendsList ' + friendsList.toString());
+
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
-              .where(FieldPath.documentId, whereIn: friendsList.sublist(1)) // Skip the 'all' element for the query
+              .where(FieldPath.documentId, whereIn: friendsList)
               .snapshots(),
           builder: (context, friendsSnapshot) {
             if (friendsSnapshot.connectionState == ConnectionState.waiting) {
@@ -257,11 +270,12 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                 'name': 'All',
                 'image': 'assets/icons/Group_light.svg',
               },
-              ...friendsDocs.map((doc) => {
-                'id': doc.id,
-                'name': doc['name'],
-                'image': doc['image'],
-              }),
+              ...friendsDocs.where((doc) => doc.id != userId).map((doc) => {
+                    // Loại bỏ người dùng hiện tại
+                    'id': doc.id,
+                    'name': doc['name'],
+                    'image': doc['image'],
+                  }),
             ];
 
             return ListView.builder(
@@ -303,7 +317,9 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? Color(0xB815CA00) : Colors.transparent,
+                              color: isSelected
+                                  ? Color(0xB815CA00)
+                                  : Colors.transparent,
                               width: 3.0,
                             ),
                           ),
@@ -334,9 +350,152 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     );
   }
 
+  Widget buildGroupList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              Container(
+                height: 100, // Set a fixed height for ListView.builder
+                width: MediaQuery.of(context).size.width - 78, // Adjust width as needed
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance.collection('groups').snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(child: Text('No groups found.'));
+                    }
 
+                    final groupDocs = snapshot.data!.docs;
 
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: groupDocs.length + 1, // +1 for the "Create Group" button
+                      itemBuilder: (context, index) {
+                        if (index == groupDocs.length) {
+                          // Last item in the list: "Create Group" button
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => CreateGroupScreen()),
+                              );
+                            },
+                            child: Container(
+                              margin: EdgeInsets.all(4.0),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 48, // Adjust width to align with the other items
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      shape: BoxShape.circle, // Make it circular
+                                    ),
+                                    child: Icon(
+                                      Icons.group_add,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.0),
+                                  Text(
+                                    'Create Group',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
 
+                        final groupData = groupDocs[index].data() as Map<String, dynamic>;
+                        final groupId = groupDocs[index].id;
+                        final String groupName = groupData['nameOfGroup'] ?? 'Unnamed Group';
+                        final String groupImageUrl = groupData['image'] ?? ''; // Assuming 'image' is the field in Firestore
+                        final bool isSelected = selectedGroups.contains(groupId); // Check if the group is selected
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                selectedGroups.remove(groupId); // Unselect the group if it's already selected
+                              } else {
+                                selectedGroups.add(groupId); // Select the group
+                              }
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.all(4.0),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 48, // Adjust width to align with the button
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: isSelected ? Colors.green : Colors.white, width: 2), // Change border color if selected
+                                  ),
+                                  child: ClipOval(
+                                    child: groupImageUrl.isNotEmpty
+                                        ? Image.network(
+                                      groupImageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          color: Colors.grey[300],
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.group,
+                                              color: Colors.white,
+                                              size: 30,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                        : Icon(
+                                      Icons.group,
+                                      color: Colors.white,
+                                      size: 30,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 8.0),
+                                Text(
+                                  groupName,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -356,106 +515,106 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                   _image == null
                       ? Text('No image selected.')
                       : Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(40.0),
-                        child: Image.file(
-                          _image!,
-                          height: 400.0,
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 20,
-                        left: 20,
-                        right: 20,
-                        child: AnimatedBuilder(
-                          animation: _shakeAnimation,
-                          builder: (context, child) {
-                            return Transform.translate(
-                              offset: Offset(_shakeAnimation.value, 0),
-                              child: child,
-                            );
-                          },
-                          child: SizeTransition(
-                            sizeFactor: _withAnimation,
-                            axis: Axis.horizontal,
-                            child: Container(
-                              width: _captionWidth,
-                              height: 65,
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.circular(30),
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(40.0),
+                              child: Image.file(
+                                _image!,
+                                height: 400.0,
                               ),
-                              padding: EdgeInsets.all(10.0),
-                              child: Center(
-                                child: SingleChildScrollView(
-                                  child: TextField(
-                                    controller: captionController,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
+                            ),
+                            Positioned(
+                              bottom: 20,
+                              left: 20,
+                              right: 20,
+                              child: AnimatedBuilder(
+                                animation: _shakeAnimation,
+                                builder: (context, child) {
+                                  return Transform.translate(
+                                    offset: Offset(_shakeAnimation.value, 0),
+                                    child: child,
+                                  );
+                                },
+                                child: SizeTransition(
+                                  sizeFactor: _withAnimation,
+                                  axis: Axis.horizontal,
+                                  child: Container(
+                                    width: _captionWidth,
+                                    height: 65,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(30),
                                     ),
-                                    decoration: InputDecoration(
-                                      border: InputBorder.none,
-                                      hintText: 'Caption',
-                                      hintStyle: TextStyle(
-                                        color: Color(0xFF605F5F),
+                                    padding: EdgeInsets.all(10.0),
+                                    child: Center(
+                                      child: SingleChildScrollView(
+                                        child: TextField(
+                                          controller: captionController,
+                                          maxLines: 1,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                          decoration: InputDecoration(
+                                            border: InputBorder.none,
+                                            hintText: 'Caption',
+                                            hintStyle: TextStyle(
+                                              color: Color(0xFF605F5F),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                      if (_uploadSuccess)
-                        Positioned(
-                          top: 100,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                              child: FadeTransition(
-                                opacity: _fadeAnimation,
-                                child: SvgPicture.asset(
-                                  'assets/icons/Upload_sucessfull.svg',
-                                  width: 200,
-                                  height: 200,
-                                  color: Colors.white,
+                            if (_uploadSuccess)
+                              Positioned(
+                                top: 100,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                    child: FadeTransition(
+                                  opacity: _fadeAnimation,
+                                  child: SvgPicture.asset(
+                                    'assets/icons/Upload_sucessfull.svg',
+                                    width: 200,
+                                    height: 200,
+                                    color: Colors.white,
+                                  ),
+                                )),
+                              ),
+                            if (_isDowloaded)
+                              Positioned(
+                                top: 150,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: SvgPicture.asset(
+                                    'assets/icons/Dowloaded.svg',
+                                    width: 200,
+                                    height: 200,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              )),
+                              ),
+                            if (_isLoading)
+                              Positioned(
+                                top: 150,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                    child: SizedBox(
+                                  width: 100,
+                                  height: 100,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                  ),
+                                )),
+                              ),
+                          ],
                         ),
-                      if (_isDowloaded)
-                        Positioned(
-                          top: 150,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: SvgPicture.asset(
-                              'assets/icons/Dowloaded.svg',
-                              width: 200,
-                              height: 200,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      if (_isLoading)
-                        Positioned(
-                          top: 150,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                              child: SizedBox(
-                                width: 100,
-                                height: 100,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                ),
-                              )),
-                        ),
-                    ],
-                  ),
                   SizedBox(height: 30.0),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -498,8 +657,13 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                     ],
                   ),
                   SizedBox(height: 20.0),
-                  Expanded(
+                  SizedBox(
                     child: buildFriendsList(),
+                    height: 90,
+                  ),
+                  SizedBox(
+                    child: buildGroupList(),
+                    height: 90,
                   ),
                 ],
               ),

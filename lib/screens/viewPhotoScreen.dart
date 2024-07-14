@@ -1,11 +1,21 @@
+import 'dart:developer';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart'; // Import flutter_svg package
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'; // Import emoji_picker_flutter package
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth package
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:takenow/Class/Globals.dart';
+import 'package:takenow/api/apis.dart';
 import 'package:takenow/main.dart';
+import 'package:takenow/models/chat_user.dart';
+import 'package:takenow/models/message.dart';
 import 'package:takenow/widgets/post_user_card.dart';
-import 'package:takenow/screens/viewAlbumScreen.dart'; // Import trang ViewAlbum
+import 'package:takenow/screens/viewAlbumScreen.dart';
 
 class ViewPhotoScreen extends StatefulWidget {
   const ViewPhotoScreen({Key? key}) : super(key: key);
@@ -19,158 +29,206 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   PageController _pageController = PageController();
   List<DocumentSnapshot>? _posts;
   bool _showChatInput = false;
-
+  String imageUrl = '';
+  String userIdPost = '';
   User? currentUser;
+  bool _isLoading = false;
+  TextEditingController _messageController = TextEditingController();
+  FocusNode _focusNode = FocusNode();
+
+  String? userID = Globals.getGoogleUserId();
 
   @override
   void initState() {
     super.initState();
-    currentUser = FirebaseAuth.instance.currentUser; // Get the current user
+    currentUser = FirebaseAuth.instance.currentUser;
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _focusNode.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF2F2E2E),
+        leading: IconButton(
+          icon:  SvgPicture.asset(
+          'assets/icons/Refund_back_light.svg',
+          width: 30,
+          height: 30,
+        ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
       backgroundColor: const Color(0xFF2F2E2E),
-      body: GestureDetector(
-        onTap: () {
-          if (_showChatInput) {
-            setState(() {
-              _showChatInput = false;
-            });
-          }
-        },
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collectionGroup('post_image')
-              .orderBy('timestamp', descending: true)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
-
-            switch (snapshot.connectionState) {
-              case ConnectionState.waiting:
-                return const Center(child: CircularProgressIndicator());
-              default:
-                if (snapshot.hasData && currentUser != null) {
-                  _posts = snapshot.data?.docs.where((document) {
-                    List<dynamic> visibleTo = document['visibleTo'];
-                    return visibleTo.contains(currentUser!.uid);
-                  }).toList();
-                } else {
-                  _posts = [];
+      body: Stack(
+        children: [
+          GestureDetector(
+            onTap: () {
+              if (_showChatInput) {
+                setState(() {
+                  _showChatInput = false;
+                  _focusNode.unfocus();
+                });
+              }
+            },
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collectionGroup('post_image')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
-                return Column(
-                  children: [
-                    Expanded(
-                      child: PageView.builder(
-                        controller: _pageController,
-                        scrollDirection: Axis.vertical,
-                        itemCount: _posts?.length ?? 0,
-                        itemBuilder: (context, index) {
-                          DocumentSnapshot document = _posts![index];
-                          String imageUrl = document['imageUrl'];
-                          String caption = document['caption'];
-                          String userId = document['userId'];
-                          String timestamp = document['timestamp'];
 
-                          int timestampInt = int.parse(timestamp);
-                          return Center(
-                            child: PostUserCard(
-                              imageUrl: imageUrl,
-                              caption: caption,
-                              userId: userId,
-                              timestamp: Timestamp.fromMillisecondsSinceEpoch(timestampInt),
-                              pageController: _pageController,
-                              index: index,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 10.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                switch (snapshot.connectionState) {
+                  case ConnectionState.waiting:
+                    return const Center(child: CircularProgressIndicator());
+                  default:
+                    if (snapshot.hasData && currentUser != null) {
+                      _posts = snapshot.data?.docs.where((document) {
+                        List<dynamic> visibleTo = document['visibleTo'];
+                        String postUserId = document['userId'];
+                        return visibleTo.contains(currentUser!.uid) ||
+                            postUserId == currentUser!.uid;
+                      }).toList();
+                    } else {
+                      _posts = [];
+                    }
+                    return Column(
                       children: [
-                        Visibility(
-                          visible: !_showChatInput,
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ViewAlbumScreen(),
+                        Expanded(
+                          child: PageView.builder(
+                            controller: _pageController,
+                            scrollDirection: Axis.vertical,
+                            itemCount: _posts?.length ?? 0,
+                            itemBuilder: (context, index) {
+                              DocumentSnapshot document = _posts![index];
+                              imageUrl = document['imageUrl'];
+                              String caption = document['caption'];
+                              userIdPost = document['userId'];
+                              String timestamp = document['timestamp'];
+
+                              int timestampInt = int.parse(timestamp);
+                              return Center(
+                                child: PostUserCard(
+                                  imageUrl: imageUrl,
+                                  caption: caption,
+                                  userId: userIdPost,
+                                  timestamp: Timestamp.fromMillisecondsSinceEpoch(
+                                      timestampInt),
+                                  pageController: _pageController,
+                                  index: index,
                                 ),
                               );
                             },
-                            child: Container(
-                              margin: const EdgeInsets.only(
-                                left: 20.0,
-                                bottom: 50.0,
-                              ),
-                              child: SvgPicture.asset(
-                                'assets/icons/darhboard.svg',
-                                width: 40, // Đặt kích thước cho Icon darhboard
-                                height: 40, // Đặt kích thước cho Icon darhboard
-                                color: Colors.white,
-                              ),
-                            ),
                           ),
                         ),
-                        const SizedBox(width: 15.0),
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Expanded(
-                                child: _showChatInput
-                                    ? _chatInput()
-                                    : EmotionSelector(
-                                  selectedEmotion: selectedEmotion,
-                                  onEmotionSelected: onEmotionSelected,
-                                  onSendMessage: () {
-                                    setState(() {
-                                      _showChatInput = true;
-                                    });
-                                  },
-                                  onOpenEmojiPicker: () {
-                                    _openEmojiPicker(context);
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 15.0),
-                              Visibility(
-                                visible: !_showChatInput,
+                        const SizedBox(height: 10.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Visibility(
+                              visible: !_showChatInput,
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ViewAlbumScreen(),
+                                    ),
+                                  );
+                                },
                                 child: Container(
                                   margin: const EdgeInsets.only(
-                                    right: 20.0,
+                                    left: 20.0,
                                     bottom: 50.0,
-                                  ), // Thêm margin bottom vào đây
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      _showSortMenu(context);
-                                    },
-                                    child: SvgPicture.asset(
-                                      'assets/icons/Sort_random_light.svg',
-                                      width: 40,
-                                      height: 40,
-                                      color: Colors.white,
-                                    ),
+                                  ),
+                                  child: SvgPicture.asset(
+                                    'assets/icons/darhboard.svg',
+                                    width: 40,
+                                    height: 40,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 15.0),
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Expanded(
+                                    child: _showChatInput
+                                        ? _chatInput()
+                                        : EmotionSelector(
+                                      selectedEmotion: selectedEmotion,
+                                      onEmotionSelected: onEmotionSelected,
+                                      onSendMessage: () {
+                                        setState(() {
+                                          _showChatInput = true;
+                                          _focusNode.requestFocus();
+                                        });
+                                      },
+                                      onOpenEmojiPicker: () {
+                                        _openEmojiPicker(context);
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 15.0),
+                                  Visibility(
+                                    visible: !_showChatInput,
+                                    child: Container(
+                                      margin: const EdgeInsets.only(
+                                        right: 20.0,
+                                        bottom: 50.0,
+                                      ),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          _showSortMenu(context);
+                                        },
+                                        child: SvgPicture.asset(
+                                          'assets/icons/Sort_random_light.svg',
+                                          width: 40,
+                                          height: 40,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
-                );
-            }
-          },
-        ),
+                    );
+                }
+              },
+            ),
+          ),
+          if (_isLoading)
+            AbsorbPointer(
+              absorbing: true,
+              child: Opacity(
+                opacity: 0.6,
+                child: Container(
+                  color: Colors.black,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -201,6 +259,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
         children: [
           Expanded(
             child: TextField(
+              controller: _messageController,
+              focusNode: _focusNode,
               autofocus: true,
               decoration: InputDecoration(
                 hintText: 'Nhập tin nhắn...',
@@ -213,14 +273,142 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () {
-              // Xử lý gửi tin nhắn ở đây
-            },
-          ),
+              icon: const Icon(Icons.send),
+              onPressed: () async {
+                setState(() {
+                  _isLoading = true;
+                });
+                String msg = _messageController.text.trim();
+
+                if (imageUrl.isNotEmpty && msg.isNotEmpty) {
+                  File file = await getImageFileFromUrl(imageUrl);
+                  DocumentSnapshot userSnapshot = await FirebaseFirestore
+                      .instance
+                      .collection('users')
+                      .doc(userIdPost)
+                      .get();
+                  if (userSnapshot.exists) {
+                    var userData = userSnapshot.data() as Map<String, dynamic>;
+
+                    ChatUser chatUser = ChatUser(
+                      id: userIdPost,
+                      image: userData['image'] ?? '',
+                      about: userData['about'] ?? '',
+                      name: userData['name'] ?? '',
+                      createdAt: (userData['createdAt'] is Timestamp)
+                          ? (userData['createdAt'] as Timestamp).toDate().toString()
+                          : Timestamp.now().toDate().toString(),
+                      isOnline: userData['isOnline'] ?? false,
+                      lastActive: (userData['lastActive'] is Timestamp)
+                          ? (userData['lastActive'] as Timestamp).toDate().toString()
+                          : Timestamp.now().toDate().toString(),
+                      email: userData['email'] ?? '',
+                      pushToken: userData['pushToken'] ?? '',
+                    );
+                    await APIs.sendChatImage(chatUser, file);
+                    await APIs.sendMessage(chatUser, msg, MessageType.text);
+                  }
+                  _messageController.clear();
+                }
+                setState(() {
+                  _isLoading = false;
+                });
+              }),
         ],
       ),
     );
+  }
+
+  Future<File> getImageFileFromUrl(String url) async {
+    final response = await Dio()
+        .get(url, options: Options(responseType: ResponseType.bytes));
+    final directory = await getTemporaryDirectory();
+    final filePath =
+        '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final file = File(filePath);
+    await file.writeAsBytes(response.data);
+    return file;
+  }
+
+  Future<void> deletePost(String imageUrl, String currentUserId) async {
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+    QuerySnapshot querySnapshot = await _firestore
+        .collectionGroup('post_image')
+        .where('imageUrl', isEqualTo: imageUrl)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      DocumentSnapshot postSnapshot = querySnapshot.docs.first;
+      Map<String, dynamic> postData =
+      postSnapshot.data() as Map<String, dynamic>;
+
+      String postUserId = postData['userId'];
+      List<dynamic> visibleTo = postData['visibleTo'];
+
+      log('postSnapshot: $postSnapshot');
+      log('postSnapshot id: ${postSnapshot.id}');
+
+      if (postUserId == currentUserId) {
+        bool confirm = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Confirm Deletion'),
+            content: Text('No one can see your post'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('OK'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm) {
+          try {
+            await postSnapshot.reference.delete();
+            log("Post deleted successfully");
+          } catch (e) {
+            log("Failed to delete post: $e");
+          }
+        }
+      } else {
+        bool confirm = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Confirm Deletion'),
+            content: Text('Delete on your side'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('OK'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm) {
+          try {
+            visibleTo.remove(currentUserId);
+            await postSnapshot.reference.update({
+              'visibleTo': visibleTo,
+            });
+            log("Visibility updated successfully");
+          } catch (e) {
+            log("Failed to update visibility: $e");
+          }
+        }
+      }
+    } else {
+      log("No post found with the given imageUrl");
+    }
   }
 
   void _showSortMenu(BuildContext context) {
@@ -228,31 +416,27 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
       context: context,
       builder: (BuildContext context) {
         return Container(
-          color: Colors.transparent, // Màu nền trong suốt
+          color: Colors.transparent,
           child: Column(
-            mainAxisSize: MainAxisSize.min, // Chiều cao dựa vào nội dung
+            mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: Icon(Icons.download),
                 title: Text('Download'),
-                onTap: () {
-                  // Xử lý khi người dùng nhấn Download
-                  Navigator.pop(context);
-                },
+                onTap: () async {},
               ),
               ListTile(
                 leading: Icon(Icons.share),
                 title: Text('Share'),
                 onTap: () {
-                  // Xử lý khi người dùng nhấn Share
                   Navigator.pop(context);
                 },
               ),
               ListTile(
                 leading: Icon(Icons.delete),
                 title: Text('Xóa'),
-                onTap: () {
-                  // Xử lý khi người dùng nhấn Xóa
+                onTap: () async {
+                  await deletePost(imageUrl, userID!);
                   Navigator.pop(context);
                 },
               ),
@@ -260,14 +444,12 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                 leading: Icon(Icons.report),
                 title: Text('Báo cáo'),
                 onTap: () {
-                  // Xử lý khi người dùng nhấn Báo cáo
                   Navigator.pop(context);
                 },
               ),
               ListTile(
                 title: Text('Hủy'),
                 onTap: () {
-                  // Xử lý khi người dùng nhấn Hủy
                   Navigator.pop(context);
                 },
               ),
@@ -282,14 +464,14 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
 class EmotionSelector extends StatelessWidget {
   final String selectedEmotion;
   final Function(String) onEmotionSelected;
-  final VoidCallback onSendMessage; // Thêm callback để xử lý khi gửi tin nhắn
-  final VoidCallback? onOpenEmojiPicker; // Callback để mở EmojiPicker
+  final VoidCallback onSendMessage;
+  final VoidCallback? onOpenEmojiPicker;
 
   const EmotionSelector({
     Key? key,
     required this.selectedEmotion,
     required this.onEmotionSelected,
-    required this.onSendMessage, // Nhận callback này từ ViewPhotoScreen
+    required this.onSendMessage,
     this.onOpenEmojiPicker,
   }) : super(key: key);
 
@@ -314,7 +496,7 @@ class EmotionSelector extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          const SizedBox(width: 10.0), // Khoảng cách giữa các thành phần
+          const SizedBox(width: 10.0),
           GestureDetector(
             onTap: onOpenEmojiPicker,
             child: SvgPicture.asset(

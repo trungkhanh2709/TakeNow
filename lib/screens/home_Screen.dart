@@ -33,15 +33,14 @@ class _HomeScreenState extends State<HomeScreen> {
   double _zoomSpeedMultiplier = 0.008;
   int _currentCameraIndex = 0;
 
-
   //click profile
 
   @override
   void initState() {
     super.initState();
     initializeCamera();
-    initializeUser();
 
+    initializeUser();
   }
 
   @override
@@ -49,18 +48,20 @@ class _HomeScreenState extends State<HomeScreen> {
     _controller.dispose();
     super.dispose();
   }
+
   Future<void> initializeUser() async {
     try {
-
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      final GoogleSignInAuthentication googleAuth = await googleUser!.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser!.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       // Sign in to Firebase with the Google credential
-      final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
       final User? user = userCredential.user;
 
       // Store the user's ID in the global variable
@@ -77,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Handle error initializing user
     }
   }
+
   Future<void> initializeCamera() async {
     cameras = await availableCameras();
     _controller = CameraController(
@@ -113,10 +115,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: Color(0xFF2F2E2E),
-
         ),
         body: Center(
-          child: CircularProgressIndicator(),
+          child:  CircularProgressIndicator(),
         ),
         backgroundColor: Color(0xFF2F2E2E),
       );
@@ -142,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFF2F2E2E),
-
         actions: [
           Expanded(
             child: Stack(
@@ -165,14 +165,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (APIs.me != null) {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => ProfileScreen(user: APIs.me)),
+                            MaterialPageRoute(
+                                builder: (_) => ProfileScreen(user: APIs.me)),
                           );
                         } else {
                           showDialog(
                             context: context,
                             builder: (_) => AlertDialog(
                               title: Text('Google Account Not Found'),
-                              content: Text('Please sign in with your Google account.'),
+                              content: Text(
+                                  'Please sign in with your Google account.'),
                               actions: [
                                 TextButton(
                                   onPressed: () {
@@ -204,7 +206,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       onPressed: () {
                         Navigator.push(
-                            context, MaterialPageRoute(builder: (_) => ListChatScreen()));
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => ListChatScreen()));
                       },
                     ),
                   ),
@@ -222,7 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               margin: EdgeInsets.only(top: 100.0),
               width: cameraPreviewSize,
-              height: cameraPreviewSize,  // Keeping width and height same for 1:1 aspect ratio
+              height:
+                  cameraPreviewSize, // Keeping width and height same for 1:1 aspect ratio
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(40.0),
                 child: OverflowBox(
@@ -248,7 +253,8 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           IconButton(
-            icon: SvgPicture.asset('assets/icons/lightning_duotone_line.svg', width: 50, height: 55),
+            icon: SvgPicture.asset('assets/icons/lightning_duotone_line.svg',
+                width: 50, height: 55),
             onPressed: _onToggleFlash,
           ),
           Container(
@@ -265,7 +271,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             onPressed: _onSwitchCamera,
-            icon: SvgPicture.asset('assets/icons/Camera_light.svg', width: 50, height: 55),
+            icon: SvgPicture.asset('assets/icons/Camera_light.svg',
+                width: 50, height: 55),
           ),
         ],
       ),
@@ -304,7 +311,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
 
   void _onSwitchCamera() async {
     _currentCameraIndex = (_currentCameraIndex + 1) % cameras.length;
@@ -354,18 +360,22 @@ class _HomeScreenState extends State<HomeScreen> {
         // Ensure the image has a 1:1 aspect ratio
         img.Image? image = img.decodeImage(imageFile.readAsBytesSync());
         if (image != null) {
-          int minLength = image.width < image.height ? image.width : image.height;
+          int minLength =
+              image.width < image.height ? image.width : image.height;
           int offsetX = (image.width - minLength) ~/ 2;
           int offsetY = (image.height - minLength) ~/ 2;
-          img.Image croppedImage = img.copyCrop(image, x: offsetX, y: offsetY, width: minLength, height: minLength);
+          img.Image croppedImage = img.copyCrop(image,
+              x: offsetX, y: offsetY, width: minLength, height: minLength);
 
           // Save the cropped image to a temporary file
-          File croppedFile = await imageFile.writeAsBytes(img.encodeJpg(croppedImage));
+          File croppedFile =
+              await imageFile.writeAsBytes(img.encodeJpg(croppedImage));
 
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => UploadPhotoScreen(imagePath: croppedFile.path),
+              builder: (context) =>
+                  UploadPhotoScreen(imagePath: croppedFile.path),
             ),
           );
         } else {

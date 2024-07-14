@@ -55,4 +55,5 @@ class ChatUser {
     data['friend_requests'] = friendRequests;
     return data;
   }
+
 }
