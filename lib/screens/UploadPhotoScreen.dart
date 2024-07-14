@@ -43,6 +43,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   int MaxLimitCharacter = 35;
   Set<String> selectedFriends = {"all"};
   List<String> friendsList = [];
+  Set<String> selectedGroups = {};
 
   @override
   void initState() {
@@ -156,7 +157,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       _isLoading = true;
     });
 
-    bool success = await uploadImageToFirebase(selectedFriends);
+    bool success = await uploadImageToFirebase(selectedFriends, selectedGroups);
     if (success) {
       setState(() {
         _uploadSuccess = true;
@@ -177,7 +178,8 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     }
   }
 
-  Future<bool> uploadImageToFirebase(Set<String> selectedFriends) async {
+
+  Future<bool> uploadImageToFirebase(Set<String> selectedFriends, Set<String> selectedGroups) async {
     String caption = captionController.text.trim();
 
     if (_image == null) {
@@ -189,7 +191,18 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
         selectedFriends.clear();
         selectedFriends.addAll(friendsList);
       }
-      await APIs.upLoadPhoto(caption, userId, _image!, selectedFriends);
+
+      // Gửi ảnh đến tất cả các thành viên của nhóm đã chọn
+      Set<String> allRecipients = Set.from(selectedFriends);
+      for (String groupId in selectedGroups) {
+        DocumentSnapshot groupDoc = await FirebaseFirestore.instance.collection('groups').doc(groupId).get();
+        if (groupDoc.exists) {
+          List<String> groupMembers = List<String>.from(groupDoc['members']);
+          allRecipients.addAll(groupMembers);
+        }
+      }
+
+      await APIs.upLoadPhoto(caption, userId, _image!, allRecipients);
       setState(() {
         _uploadSuccess = true;
       });
@@ -408,15 +421,21 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                           );
                         }
 
-                        final groupData = groupDocs[index].data();
+                        final groupData = groupDocs[index].data() as Map<String, dynamic>;
                         final groupId = groupDocs[index].id;
-                        final String groupName = (groupData as Map<String, dynamic>)['nameOfGroup'] ?? 'Unnamed Group';
+                        final String groupName = groupData['nameOfGroup'] ?? 'Unnamed Group';
                         final String groupImageUrl = groupData['image'] ?? ''; // Assuming 'image' is the field in Firestore
+                        final bool isSelected = selectedGroups.contains(groupId); // Check if the group is selected
 
                         return GestureDetector(
                           onTap: () {
-                            // Handle group item click
-                            // Example: Navigator.push(context, MaterialPageRoute(builder: (_) => GroupDetailScreen(groupId)));
+                            setState(() {
+                              if (isSelected) {
+                                selectedGroups.remove(groupId); // Unselect the group if it's already selected
+                              } else {
+                                selectedGroups.add(groupId); // Select the group
+                              }
+                            });
                           },
                           child: Container(
                             margin: EdgeInsets.all(4.0),
@@ -427,7 +446,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                                   height: 48,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
+                                    border: Border.all(color: isSelected ? Colors.green : Colors.white, width: 2), // Change border color if selected
                                   ),
                                   child: ClipOval(
                                     child: groupImageUrl.isNotEmpty
@@ -477,7 +496,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       ],
     );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

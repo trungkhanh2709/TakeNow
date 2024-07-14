@@ -14,7 +14,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   String userId = Globals.getGoogleUserId().toString();
   String groupName = '';
   Set<String> groupMembers = {};
-  List<String> friendsList = [];
+  List<Map<String, dynamic>> friendsList = [];
   File? _groupImage;
   final ImagePicker _picker = ImagePicker();
 
@@ -30,8 +30,23 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         .doc(userId)
         .get();
     if (userDoc.exists) {
+      List<String> friendsIds = List<String>.from(userDoc['friends']);
+      List<Map<String, dynamic>> tempFriendsList = [];
+      for (String friendId in friendsIds) {
+        DocumentSnapshot friendDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(friendId)
+            .get();
+        if (friendDoc.exists) {
+          tempFriendsList.add({
+            'id': friendDoc.id,
+            'name': friendDoc['name'],
+            'image': friendDoc['image'],
+          });
+        }
+      }
       setState(() {
-        friendsList = List<String>.from(userDoc['friends']);
+        friendsList = tempFriendsList;
       });
     }
   }
@@ -117,16 +132,30 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
               child: ListView.builder(
                 itemCount: friendsList.length,
                 itemBuilder: (context, index) {
-                  final friendId = friendsList[index];
+                  final friend = friendsList[index];
                   return CheckboxListTile(
-                    title: Text(friendId), // Replace with friend's name
-                    value: groupMembers.contains(friendId),
+                    title: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: friend['image'] != null
+                              ? NetworkImage(friend['image'])
+                              : null,
+                          radius: 20,
+                          child: friend['image'] == null
+                              ? Icon(Icons.person)
+                              : null,
+                        ),
+                        SizedBox(width: 10),
+                        Text(friend['name']),
+                      ],
+                    ),
+                    value: groupMembers.contains(friend['id']),
                     onChanged: (bool? selected) {
                       setState(() {
                         if (selected == true) {
-                          groupMembers.add(friendId);
+                          groupMembers.add(friend['id']);
                         } else {
-                          groupMembers.remove(friendId);
+                          groupMembers.remove(friend['id']);
                         }
                       });
                     },
