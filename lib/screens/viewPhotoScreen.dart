@@ -54,6 +54,19 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF2F2E2E),
+        leading: IconButton(
+          icon:  SvgPicture.asset(
+          'assets/icons/Refund_back_light.svg',
+          width: 30,
+          height: 30,
+        ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
       backgroundColor: const Color(0xFF2F2E2E),
       body: Stack(
         children: [
