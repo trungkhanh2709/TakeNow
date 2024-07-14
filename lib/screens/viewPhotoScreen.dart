@@ -10,7 +10,10 @@ import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth packag
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:takenow/Class/Globals.dart';
+import 'package:takenow/api/apis.dart';
 import 'package:takenow/main.dart';
+import 'package:takenow/models/chat_user.dart';
+import 'package:takenow/models/message.dart';
 import 'package:takenow/widgets/post_user_card.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart'; // Import trang ViewAlbum
 
@@ -26,8 +29,11 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   PageController _pageController = PageController();
   List<DocumentSnapshot>? _posts;
   bool _showChatInput = false;
-  String imageUrl ='';
+  String imageUrl = '';
+  String userIdPost = '';
   User? currentUser;
+  TextEditingController _messageController = TextEditingController();
+
   String? userID = Globals.getGoogleUserId();
 
   @override
@@ -36,10 +42,13 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
 
     currentUser = FirebaseAuth.instance.currentUser; // Get the current user
   }
-
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: const Color(0xFF2F2E2E),
       body: GestureDetector(
@@ -68,7 +77,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                   _posts = snapshot.data?.docs.where((document) {
                     List<dynamic> visibleTo = document['visibleTo'];
                     String postUserId = document['userId'];
-                    return visibleTo.contains(currentUser!.uid) || postUserId == currentUser!.uid;
+                    return visibleTo.contains(currentUser!.uid) ||
+                        postUserId == currentUser!.uid;
                   }).toList();
                 } else {
                   _posts = [];
@@ -84,7 +94,7 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                           DocumentSnapshot document = _posts![index];
                           imageUrl = document['imageUrl'];
                           String caption = document['caption'];
-                          String userId = document['userId'];
+                          userIdPost = document['userId'];
                           String timestamp = document['timestamp'];
 
                           int timestampInt = int.parse(timestamp);
@@ -92,8 +102,9 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                             child: PostUserCard(
                               imageUrl: imageUrl,
                               caption: caption,
-                              userId: userId,
-                              timestamp: Timestamp.fromMillisecondsSinceEpoch(timestampInt),
+                              userId: userIdPost,
+                              timestamp: Timestamp.fromMillisecondsSinceEpoch(
+                                  timestampInt),
                               pageController: _pageController,
                               index: index,
                             ),
@@ -139,17 +150,17 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                                 child: _showChatInput
                                     ? _chatInput()
                                     : EmotionSelector(
-                                  selectedEmotion: selectedEmotion,
-                                  onEmotionSelected: onEmotionSelected,
-                                  onSendMessage: () {
-                                    setState(() {
-                                      _showChatInput = true;
-                                    });
-                                  },
-                                  onOpenEmojiPicker: () {
-                                    _openEmojiPicker(context);
-                                  },
-                                ),
+                                        selectedEmotion: selectedEmotion,
+                                        onEmotionSelected: onEmotionSelected,
+                                        onSendMessage: () {
+                                          setState(() {
+                                            _showChatInput = true;
+                                          });
+                                        },
+                                        onOpenEmojiPicker: () {
+                                          _openEmojiPicker(context);
+                                        },
+                                      ),
                               ),
                               const SizedBox(width: 15.0),
                               Visibility(
@@ -212,6 +223,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
         children: [
           Expanded(
             child: TextField(
+              controller: _messageController,
+
               autofocus: true,
               decoration: InputDecoration(
                 hintText: 'Nhập tin nhắn...',
@@ -224,17 +237,60 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () {
-              // Xử lý gửi tin nhắn ở đây
-            },
-          ),
+              icon: const Icon(Icons.send),
+              onPressed: () async {
+                String msg = _messageController.text.trim();
+
+                if (imageUrl.isNotEmpty  && msg.isNotEmpty) {
+                  File file = await getImageFileFromUrl(imageUrl);
+                  // Fetch user data to create a ChatUser instance
+                  DocumentSnapshot userSnapshot = await FirebaseFirestore
+                      .instance
+                      .collection('users')
+                      .doc(userIdPost)
+                      .get();
+                  if (userSnapshot.exists) {
+                    var userData = userSnapshot.data() as Map<String, dynamic>;
+
+                    ChatUser chatUser = ChatUser(
+                      id: userIdPost,
+                      image: userData['image'] ?? '',
+                      about: userData['about'] ?? '',
+                      name: userData['name'] ?? '',
+                      createdAt: (userData['createdAt'] is Timestamp)
+                          ? (userData['createdAt'] as Timestamp).toDate().toString()
+                          : Timestamp.now().toDate().toString(),
+                      isOnline: userData['isOnline'] ?? false,
+                      lastActive: (userData['lastActive'] is Timestamp)
+                          ? (userData['lastActive'] as Timestamp).toDate().toString()
+                          : Timestamp.now().toDate().toString(),
+                      email: userData['email'] ?? '',
+                      pushToken: userData['pushToken'] ?? '',
+                    );
+                    await APIs.sendChatImage(chatUser, file);
+                    await APIs.sendMessage(chatUser, msg, MessageType.text);
+                  }
+                  _messageController.clear(); // Clear the message input
+                  Navigator.pop(context);
+
+                }
+
+              }),
         ],
       ),
     );
   }
 
-
+  Future<File> getImageFileFromUrl(String url) async {
+    final response = await Dio()
+        .get(url, options: Options(responseType: ResponseType.bytes));
+    final directory = await getTemporaryDirectory();
+    final filePath =
+        '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final file = File(filePath);
+    await file.writeAsBytes(response.data);
+    return file;
+  }
 
   Future<void> deletePost(String imageUrl, String currentUserId) async {
     final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -247,7 +303,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
 
     if (querySnapshot.docs.isNotEmpty) {
       DocumentSnapshot postSnapshot = querySnapshot.docs.first;
-      Map<String, dynamic> postData = postSnapshot.data() as Map<String, dynamic>;
+      Map<String, dynamic> postData =
+          postSnapshot.data() as Map<String, dynamic>;
 
       String postUserId = postData['userId'];
       List<dynamic> visibleTo = postData['visibleTo'];
