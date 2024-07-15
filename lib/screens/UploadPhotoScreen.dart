@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/screens/CreateGroupScreen.dart';
+import 'package:takenow/screens/EditGroupScreen.dart';
 import 'package:takenow/screens/home_Screen.dart';
 import 'package:vibration/vibration.dart';
 
@@ -39,6 +40,8 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   bool _uploadSuccess = false;
   bool _isLoading = false;
   bool _isDowloaded = false;
+  bool isGroupSelect = false;
+  bool isFriendsSelect = false;
 
   int MaxLimitCharacter = 35;
   Set<String> selectedFriends = {"all"};
@@ -178,8 +181,8 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     }
   }
 
-
-  Future<bool> uploadImageToFirebase(Set<String> selectedFriends, Set<String> selectedGroups) async {
+  Future<bool> uploadImageToFirebase(
+      Set<String> selectedFriends, Set<String> selectedGroups) async {
     String caption = captionController.text.trim();
 
     if (_image == null) {
@@ -195,7 +198,10 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       // Gửi ảnh đến tất cả các thành viên của nhóm đã chọn
       Set<String> allRecipients = Set.from(selectedFriends);
       for (String groupId in selectedGroups) {
-        DocumentSnapshot groupDoc = await FirebaseFirestore.instance.collection('groups').doc(groupId).get();
+        DocumentSnapshot groupDoc = await FirebaseFirestore.instance
+            .collection('groups')
+            .doc(groupId)
+            .get();
         if (groupDoc.exists) {
           List<String> groupMembers = List<String>.from(groupDoc['members']);
           allRecipients.addAll(groupMembers);
@@ -437,6 +443,61 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                               }
                             });
                           },
+                          onLongPress: () {
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (context) {
+                                return Container(
+                                  color: Color(0xFF2F2E2E),
+                                  child: Wrap(
+                                    children: [
+                                      ListTile(
+                                        leading: Icon(Icons.edit, color: Colors.white),
+                                        title: Text('Edit Group', style: TextStyle(color: Colors.white)),
+                                        onTap: () {
+                                          Navigator.pop(context); // Close the bottom sheet
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => EditGroupScreen(groupId: groupId, groupName: groupName, groupImageUrl: groupImageUrl),
+                                            ),
+                                          );
+                                        },
+                                      ),
+
+                                      ListTile(
+                                        leading: Icon(Icons.delete, color: Colors.white),
+                                        title: Text('Delete Group', style: TextStyle(color: Colors.white)),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text('Delete Group'),
+                                              content: Text('Are you sure you want to delete this group?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context),
+                                                  child: Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () async {
+                                                    Navigator.pop(context);
+                                                    await FirebaseFirestore.instance.collection('groups').doc(groupId).delete();
+                                                  },
+                                                  child: Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          },
                           child: Container(
                             margin: EdgeInsets.all(4.0),
                             child: Column(
@@ -496,12 +557,22 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       ],
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Upload Photo'),
-      ),
+        leading: IconButton(
+          icon:  SvgPicture.asset(
+            'assets/icons/Refund_back_light.svg',
+            width: 30,
+            height: 30,
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),      ),
       backgroundColor: Color(0xFF2F2E2E),
       body: Stack(
         children: [

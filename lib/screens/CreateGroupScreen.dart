@@ -1,7 +1,8 @@
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:takenow/Class/Globals.dart';
 
@@ -17,6 +18,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   List<Map<String, dynamic>> friendsList = [];
   File? _groupImage;
   final ImagePicker _picker = ImagePicker();
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -61,7 +63,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   }
 
   Future<void> createGroup() async {
-    if (groupName.isNotEmpty && groupMembers.isNotEmpty) {
+    if (_formKey.currentState!.validate()) {
       String imageUrl = '';
       if (_groupImage != null) {
         final storageRef = FirebaseStorage.instance
@@ -88,86 +90,212 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Color(0xFF2F2E2E),
         title: Text('Create Group'),
+        leading: IconButton(
+          icon:  SvgPicture.asset(
+            'assets/icons/Refund_back_light.svg',
+            width: 30,
+            height: 30,
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
       ),
+      backgroundColor: Color(0xFF2F2E2E),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              onChanged: (value) {
-                groupName = value;
-              },
-              decoration: InputDecoration(
-                hintText: 'Group Name',
-              ),
-            ),
-            SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.camera),
-                  icon: Icon(Icons.camera),
-                  label: Text('Capture Image'),
-                ),
-                SizedBox(width: 10),
-                ElevatedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.gallery),
-                  icon: Icon(Icons.photo_library),
-                  label: Text('Select from Gallery'),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            if (_groupImage != null)
-              Image.file(
-                _groupImage!,
-                height: 100,
-                width: 100,
-                fit: BoxFit.cover,
-              ),
-            SizedBox(height: 10),
-            Expanded(
-              child: ListView.builder(
-                itemCount: friendsList.length,
-                itemBuilder: (context, index) {
-                  final friend = friendsList[index];
-                  return CheckboxListTile(
-                    title: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundImage: friend['image'] != null
-                              ? NetworkImage(friend['image'])
-                              : null,
-                          radius: 20,
-                          child: friend['image'] == null
-                              ? Icon(Icons.person)
-                              : null,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              ListTile(
+                                leading: Icon(Icons.camera),
+                                title: Text('Take a picture'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _pickImage(ImageSource.camera);
+                                },
+                              ),
+                              ListTile(
+                                leading: Icon(Icons.photo_library),
+                                title: Text('Choose from gallery'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _pickImage(ImageSource.gallery);
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 210,
+                        width: 210,
+                        padding: EdgeInsets.all(5), // Padding to create the border
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.purple, width: 5),
                         ),
-                        SizedBox(width: 10),
-                        Text(friend['name']),
-                      ],
-                    ),
-                    value: groupMembers.contains(friend['id']),
-                    onChanged: (bool? selected) {
-                      setState(() {
-                        if (selected == true) {
-                          groupMembers.add(friend['id']);
-                        } else {
-                          groupMembers.remove(friend['id']);
-                        }
-                      });
-                    },
-                  );
+                        child: ClipOval(
+                          child: _groupImage != null
+                              ? Image.file(
+                            _groupImage!,
+                            height: 200,
+                            width: 200,
+                            fit: BoxFit.cover,
+                          )
+                              : Center(
+                            child: Icon(Icons.add, size: 50, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.blue,
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.edit, color: Colors.white),
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return SafeArea(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        ListTile(
+                                          leading: Icon(Icons.camera),
+                                          title: Text('Take a picture'),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            _pickImage(ImageSource.camera);
+                                          },
+                                        ),
+                                        ListTile(
+                                          leading: Icon(Icons.photo_library),
+                                          title: Text('Choose from gallery'),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            _pickImage(ImageSource.gallery);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              TextFormField(
+                decoration: InputDecoration(labelText: 'Group Name', labelStyle: TextStyle(color: Colors.white)),
+                style: TextStyle(color: Colors.white),
+                onChanged: (value) {
+                  setState(() {
+                    groupName = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a group name';
+                  }
+                  return null;
                 },
               ),
-            ),
-            ElevatedButton(
-              onPressed: createGroup,
-              child: Text('Create Group'),
-            ),
-          ],
+              SizedBox(height: 20),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: friendsList.length,
+                  itemBuilder: (context, index) {
+                    final friend = friendsList[index];
+                    final isSelected = groupMembers.contains(friend['id']);
+
+                    return ListTile(
+                      leading: friend['image'].isNotEmpty
+                          ? ClipOval(
+                        child: Image.network(
+                          friend['image'],
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                          : ClipOval(
+                        child: Icon(Icons.person, size: 50, color: Colors.white),
+                      ),
+                      title: Text(friend['name'], style: TextStyle(color: Colors.white)),
+                      trailing: Checkbox(
+                        value: isSelected,
+                        onChanged: (value) {
+                          setState(() {
+                            if (value == true) {
+                              groupMembers.add(friend['id']);
+                            } else {
+                              groupMembers.remove(friend['id']);
+                            }
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 10),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 50),
+                  child: TextButton(
+                    onPressed: groupName.isNotEmpty && groupMembers.length >= 2 ? createGroup : null,
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color(0xFF2F2E2E),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(color: Colors.white, width: 2),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                      child: Text(
+                        'Create Group',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
