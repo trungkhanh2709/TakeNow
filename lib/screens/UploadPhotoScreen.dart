@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gallery_saver/gallery_saver.dart';
@@ -9,6 +10,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/screens/CreateGroupScreen.dart';
+import 'package:takenow/screens/EditGroupScreen.dart';
 import 'package:takenow/screens/home_Screen.dart';
 import 'package:vibration/vibration.dart';
 
@@ -39,12 +41,20 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   bool _uploadSuccess = false;
   bool _isLoading = false;
   bool _isDowloaded = false;
+  bool isGroupSelect = false;
+  bool isFriendsSelect = false;
 
   int MaxLimitCharacter = 35;
   Set<String> selectedFriends = {"all"};
   List<String> friendsList = [];
   Set<String> selectedGroups = {};
 
+
+  String _generateRandomId(int length) {
+    const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    return String.fromCharCodes(Iterable.generate(length, (_) => characters.codeUnitAt(random.nextInt(characters.length))));
+  }
   @override
   void initState() {
     super.initState();
@@ -104,7 +114,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
 
   Future<void> fetchFriendsList() async {
     String userId = Globals.getGoogleUserId().toString();
-    log('fetchFr' + userId);
     DocumentSnapshot userDoc =
         await FirebaseFirestore.instance.collection('users').doc(userId).get();
     if (userDoc.exists) {
@@ -144,7 +153,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       final bool? result =
           await GallerySaver.saveImage(_image!.path, albumName: 'Takenow');
     } else {
-      log('No image to save');
     }
     await Future.delayed(Duration(milliseconds: 1800));
     setState(() {
@@ -170,7 +178,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
         context,
         MaterialPageRoute(builder: (_) => HomeScreen()),
       );
-      log('Upload and change ' + success.toString());
     } else {
       setState(() {
         _isLoading = false;
@@ -178,12 +185,11 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     }
   }
 
-
-  Future<bool> uploadImageToFirebase(Set<String> selectedFriends, Set<String> selectedGroups) async {
+  Future<bool> uploadImageToFirebase(
+      Set<String> selectedFriends, Set<String> selectedGroups) async {
     String caption = captionController.text.trim();
 
     if (_image == null) {
-      log('No image selected');
       return false;
     } else {
       // Nếu "all" được chọn, gửi ảnh đến tất cả bạn bè
@@ -195,14 +201,18 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       // Gửi ảnh đến tất cả các thành viên của nhóm đã chọn
       Set<String> allRecipients = Set.from(selectedFriends);
       for (String groupId in selectedGroups) {
-        DocumentSnapshot groupDoc = await FirebaseFirestore.instance.collection('groups').doc(groupId).get();
+        DocumentSnapshot groupDoc = await FirebaseFirestore.instance
+            .collection('groups')
+            .doc(groupId)
+            .get();
         if (groupDoc.exists) {
           List<String> groupMembers = List<String>.from(groupDoc['members']);
           allRecipients.addAll(groupMembers);
         }
       }
+      String idpost = _generateRandomId(10);
 
-      await APIs.upLoadPhoto(caption, userId, _image!, allRecipients);
+      await APIs.upLoadPhoto(caption, userId, _image!, allRecipients,idpost);
       setState(() {
         _uploadSuccess = true;
       });
@@ -212,10 +222,8 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
 
   Widget buildFriendsList() {
     if (userId == null) {
-      log('User is not logged in');
       return Center(child: Text('User is not logged in'));
     }
-    log('Current User ID: $userId');
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -230,22 +238,18 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
           return Center(child: Text('Error: ${userSnapshot.error}'));
         }
         if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-          log('No user document found.');
           return Center(child: Text('No user data found.'));
         }
 
         final userDocument = userSnapshot.data!;
-        log('UserID: ${userDocument.id}');
-        log('UserFields: ${userDocument.data()}');
+
         final List<dynamic> friendsList = userDocument['friends'] ?? [];
 
         if (friendsList.isEmpty) {
-          log('Friends list is empty.');
           return Center(child: Text('No friends found.'));
         }
 
         friendsList.insert(0, 'all'); // Thêm "all" vào đầu danh sách bạn bè
-        log('friendsList ' + friendsList.toString());
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -261,7 +265,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
             }
 
             final friendsDocs = friendsSnapshot.data?.docs ?? [];
-            log('Friends documents count: ${friendsDocs.length}');
 
             // Build the list of friend items, starting with the 'all' item
             final friendItems = [
@@ -437,6 +440,61 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                               }
                             });
                           },
+                          onLongPress: () {
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (context) {
+                                return Container(
+                                  color: Color(0xFF2F2E2E),
+                                  child: Wrap(
+                                    children: [
+                                      ListTile(
+                                        leading: Icon(Icons.edit, color: Colors.white),
+                                        title: Text('Edit Group', style: TextStyle(color: Colors.white)),
+                                        onTap: () {
+                                          Navigator.pop(context); // Close the bottom sheet
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => EditGroupScreen(groupId: groupId, groupName: groupName, groupImageUrl: groupImageUrl),
+                                            ),
+                                          );
+                                        },
+                                      ),
+
+                                      ListTile(
+                                        leading: Icon(Icons.delete, color: Colors.white),
+                                        title: Text('Delete Group', style: TextStyle(color: Colors.white)),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text('Delete Group'),
+                                              content: Text('Are you sure you want to delete this group?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context),
+                                                  child: Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () async {
+                                                    Navigator.pop(context);
+                                                    await FirebaseFirestore.instance.collection('groups').doc(groupId).delete();
+                                                  },
+                                                  child: Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          },
                           child: Container(
                             margin: EdgeInsets.all(4.0),
                             child: Column(
@@ -496,12 +554,22 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       ],
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Upload Photo'),
-      ),
+        leading: IconButton(
+          icon:  SvgPicture.asset(
+            'assets/icons/Refund_back_light.svg',
+            width: 30,
+            height: 30,
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),      ),
       backgroundColor: Color(0xFF2F2E2E),
       body: Stack(
         children: [
