@@ -332,4 +332,21 @@ class APIs {
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
+
+  static Future<bool> removeFriendRequest(String friendId) async {
+    try {
+      // Assume we have a collection 'friendRequests' storing friend requests
+      String currentUserId = user.uid;
+      await FirebaseFirestore.instance
+          .collection('friendRequests')
+          .doc(currentUserId)
+          .collection('requests')
+          .doc(friendId)
+          .delete();
+      return true;
+    } catch (e) {
+      print('Error removing friend request: $e');
+      return false;
+    }
+  }
 }
