@@ -75,7 +75,7 @@ class APIs {
   }
 
   static Future<void> postPhoto(
-      String caption, String imageUrl, PostType type, Set<String> selectedFriends) async {
+      String caption, String imageUrl, PostType type, Set<String> selectedFriends, String idpost) async {
     // Post sending time (also used as ID)
     final time = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -86,7 +86,9 @@ class APIs {
         timestamp: time,
         userId: user.uid,
         type: type,
-        visibleTo: selectedFriends.toList() // Add selected friends here
+        visibleTo: selectedFriends.toList(),
+      idpost: idpost,
+      // Add selected friends here
     );
 
     final ref = firestore
@@ -157,7 +159,7 @@ class APIs {
     log('Profile picture updated successfully');
   }
 
-  static Future<void> upLoadPhoto(String caption, String userId, File file, Set<String> selectedFriends) async {
+  static Future<void> upLoadPhoto(String caption, String userId, File file, Set<String> selectedFriends, String idpost) async {
     final ext = file.path.split('.').last;
     final ref = storage.ref().child('images/${getConversationID(userId)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
     await ref
@@ -168,7 +170,7 @@ class APIs {
 
     // Get image URL
     final imageUrl = await ref.getDownloadURL();
-    await postPhoto(caption, imageUrl, PostType.image, selectedFriends);
+    await postPhoto(caption, imageUrl, PostType.image, selectedFriends,idpost);
   }
 
 

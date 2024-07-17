@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gallery_saver/gallery_saver.dart';
@@ -48,6 +49,12 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
   List<String> friendsList = [];
   Set<String> selectedGroups = {};
 
+
+  String _generateRandomId(int length) {
+    const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    return String.fromCharCodes(Iterable.generate(length, (_) => characters.codeUnitAt(random.nextInt(characters.length))));
+  }
   @override
   void initState() {
     super.initState();
@@ -107,7 +114,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
 
   Future<void> fetchFriendsList() async {
     String userId = Globals.getGoogleUserId().toString();
-    log('fetchFr' + userId);
     DocumentSnapshot userDoc =
         await FirebaseFirestore.instance.collection('users').doc(userId).get();
     if (userDoc.exists) {
@@ -147,7 +153,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
       final bool? result =
           await GallerySaver.saveImage(_image!.path, albumName: 'Takenow');
     } else {
-      log('No image to save');
     }
     await Future.delayed(Duration(milliseconds: 1800));
     setState(() {
@@ -173,7 +178,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
         context,
         MaterialPageRoute(builder: (_) => HomeScreen()),
       );
-      log('Upload and change ' + success.toString());
     } else {
       setState(() {
         _isLoading = false;
@@ -186,7 +190,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
     String caption = captionController.text.trim();
 
     if (_image == null) {
-      log('No image selected');
       return false;
     } else {
       // Nếu "all" được chọn, gửi ảnh đến tất cả bạn bè
@@ -207,8 +210,9 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
           allRecipients.addAll(groupMembers);
         }
       }
+      String idpost = _generateRandomId(10);
 
-      await APIs.upLoadPhoto(caption, userId, _image!, allRecipients);
+      await APIs.upLoadPhoto(caption, userId, _image!, allRecipients,idpost);
       setState(() {
         _uploadSuccess = true;
       });
@@ -218,10 +222,8 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
 
   Widget buildFriendsList() {
     if (userId == null) {
-      log('User is not logged in');
       return Center(child: Text('User is not logged in'));
     }
-    log('Current User ID: $userId');
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -236,22 +238,18 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
           return Center(child: Text('Error: ${userSnapshot.error}'));
         }
         if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-          log('No user document found.');
           return Center(child: Text('No user data found.'));
         }
 
         final userDocument = userSnapshot.data!;
-        log('UserID: ${userDocument.id}');
-        log('UserFields: ${userDocument.data()}');
+
         final List<dynamic> friendsList = userDocument['friends'] ?? [];
 
         if (friendsList.isEmpty) {
-          log('Friends list is empty.');
           return Center(child: Text('No friends found.'));
         }
 
         friendsList.insert(0, 'all'); // Thêm "all" vào đầu danh sách bạn bè
-        log('friendsList ' + friendsList.toString());
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -267,7 +265,6 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
             }
 
             final friendsDocs = friendsSnapshot.data?.docs ?? [];
-            log('Friends documents count: ${friendsDocs.length}');
 
             // Build the list of friend items, starting with the 'all' item
             final friendItems = [
