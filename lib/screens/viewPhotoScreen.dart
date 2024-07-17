@@ -1,7 +1,10 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/screens/CommentScreen.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart';
 import 'package:takenow/widgets/post_user_card.dart';
@@ -17,6 +20,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   String selectedEmotion = '';
   PageController _pageController = PageController();
   List<DocumentSnapshot>? _posts;
+  String imageUrlScroll = '';
+  String userId = '';
 
   @override
   Widget build(BuildContext context) {
@@ -45,9 +50,9 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                     itemCount: _posts?.length ?? 0,
                     itemBuilder: (context, index) {
                       DocumentSnapshot document = _posts![index];
-                      String imageUrlScroll = document['imageUrl'];
+                       imageUrlScroll = document['imageUrl'];
                       String caption = document['caption'];
-                      String userId = document['userId'];
+                       userId = document['userId'];
                       String timestamp = document['timestamp'];
 
                       int timestampInt = int.parse(timestamp);
@@ -98,15 +103,16 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                                       _openEmojiPicker(context);
                                     },
 
-                                    onShowSortMenu: () {
-                                      _showSortMenu(context);
-                                    },
+
 
                                   ),
                                   const SizedBox(width: 10.0),
                                   GestureDetector(
-                                    // onTap: _showSortMenu(context),
-                                    onTap: (){},
+
+                                    onTap: (){
+                                        _showSortMenu(context);
+
+                                    },
 
                                     child: SvgPicture.asset(
                                       'assets/icons/Sort_random_light.svg',
@@ -150,6 +156,86 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
       },
     );
   }
+  Future<void> deletePost(String imageUrl, String? currentUserId) async {
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+    QuerySnapshot querySnapshot = await _firestore
+        .collectionGroup('post_image')
+        .where('imageUrl', isEqualTo: imageUrl)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      DocumentSnapshot postSnapshot = querySnapshot.docs.first;
+      Map<String, dynamic> postData =
+      postSnapshot.data() as Map<String, dynamic>;
+
+      String postUserId = postData['userId'];
+      List<dynamic> visibleTo = postData['visibleTo'];
+
+      log('postSnapshot: $postSnapshot');
+      log('postSnapshot id: ${postSnapshot.id}');
+
+      if (postUserId == currentUserId) {
+        bool confirm = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Confirm Deletion'),
+            content: Text('No one can see your post'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('OK'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm) {
+          try {
+            await postSnapshot.reference.delete();
+            log("Post deleted successfully");
+          } catch (e) {
+            log("Failed to delete post: $e");
+          }
+        }
+      } else {
+        bool confirm = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Confirm Deletion'),
+            content: Text('Delete on your side'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('OK'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm) {
+          try {
+            visibleTo.remove(currentUserId);
+            await postSnapshot.reference.update({
+              'visibleTo': visibleTo,
+            });
+            log("Visibility updated successfully");
+          } catch (e) {
+            log("Failed to update visibility: $e");
+          }
+        }
+      }
+    } else {
+      log("No post found with the given imageUrl");
+    }
+  }
 
   void _showSortMenu(BuildContext context) {
     showModalBottomSheet(
@@ -177,7 +263,10 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
               ListTile(
                 leading: Icon(Icons.delete),
                 title: Text('Xóa'),
-                onTap: () {
+                onTap: () async {
+                  String? iduserLogin = Globals.getGoogleUserId();
+                  await deletePost(imageUrlScroll,iduserLogin );
+
                   Navigator.pop(context);
                 },
               ),
@@ -200,6 +289,8 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
       },
     );
   }
+
+
 }
 
 class EmotionSelector extends StatelessWidget {
@@ -209,7 +300,6 @@ class EmotionSelector extends StatelessWidget {
   final VoidCallback? onSendMessage;
   final VoidCallback? onOpenEmojiPicker;
 
-  final VoidCallback onShowSortMenu;
 
   const EmotionSelector({
     Key? key,
@@ -219,7 +309,6 @@ class EmotionSelector extends StatelessWidget {
     this.onSendMessage,
     this.onOpenEmojiPicker,
 
-    required this.onShowSortMenu,
   }) : super(key: key);
 
   @override

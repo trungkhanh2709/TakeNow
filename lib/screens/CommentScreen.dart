@@ -95,6 +95,8 @@ class _CommentScreenState extends State<CommentScreen> {
                     await APIs.sendMessage(chatUser, msg, MessageType.text);
                   }
                   _messageController.clear();
+                  Navigator.pop(context);
+
                 }
                 setState(() {
                   _isLoading = false;
