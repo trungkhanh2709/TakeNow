@@ -1,9 +1,12 @@
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:image_downloader/image_downloader.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/screens/CommentScreen.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart';
@@ -236,6 +239,61 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
       log("No post found with the given imageUrl");
     }
   }
+  Future<void> downloadImageToAlbum(String imageUrl) async {
+    bool hasPermission = await _requestPermission(Permission.storage);
+    if (!hasPermission) {
+      print('Storage permission denied');
+      return;
+    }
+
+    try {
+      log('message ' +imageUrl);
+      String? imageId = await ImageDownloader.downloadImage(
+        imageUrl,
+        destination: AndroidDestinationType.directoryPictures
+          ..subDirectory("Takenow/${DateTime.now().millisecondsSinceEpoch}.jpg"),
+      );
+
+      if (imageId == null) {
+        print('Download failed');
+        return;
+      }
+
+      // Retrieve the image file path
+      String? filePath = await ImageDownloader.findPath(imageId);
+      if (filePath == null) {
+        print('Could not find the downloaded image');
+        return;
+      }
+
+      print('Image downloaded to: $filePath');
+    } on Exception catch (error) {
+      print('Error downloading image: $error');
+    }
+  }
+
+  Future<bool> _requestPermission(Permission permission) async {
+    final plugin = DeviceInfoPlugin();
+    final android = await plugin.androidInfo;
+
+    final storageStatus = android.version.sdkInt < 33
+        ? await Permission.storage.request()
+        : PermissionStatus.granted;
+
+    if (storageStatus == PermissionStatus.granted) {
+      print("granted");
+      return true;
+    }
+    if (storageStatus == PermissionStatus.denied) {
+      print("denied");
+      return false;
+    }
+    if (storageStatus == PermissionStatus.permanentlyDenied) {
+      openAppSettings();
+      return false;
+    }
+    return false;
+  }
 
   void _showSortMenu(BuildContext context) {
     showModalBottomSheet(
@@ -249,17 +307,13 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
               ListTile(
                 leading: Icon(Icons.download),
                 title: Text('Download'),
-                onTap: () {
+                onTap: () async  {
+                  log('imageUrlScroll' + imageUrlScroll);
+                  await downloadImageToAlbum(imageUrlScroll);
                   Navigator.pop(context);
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.share),
-                title: Text('Share'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
+
               ListTile(
                 leading: Icon(Icons.delete),
                 title: Text('Xóa'),

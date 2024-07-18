@@ -366,7 +366,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                 height: 100, // Set a fixed height for ListView.builder
                 width: MediaQuery.of(context).size.width - 78, // Adjust width as needed
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('groups').snapshots(),
+                  stream: FirebaseFirestore.instance.collection('groups').where('userId',isEqualTo: userId).snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
