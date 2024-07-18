@@ -117,6 +117,8 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                           onPressed: () {
                             String query = _searchController.text.trim();
                             _searchAndDisplayUser(query);
+
+
                           },
                         ),
                       ),
