@@ -48,6 +48,8 @@ dependencies:
   dio: ^5.5.0+1
   path_provider: ^2.1.3
   permission_handler: ^11.3.1
+  firebase_messaging: ^15.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -85,3 +87,4 @@ flutter:
     - assets/icons/User_cicrle_light.svg
     - assets/icons/Group_light.svg
     - assets/icons/Refund_back_light.svg
+    - assets/icons/Delete.svg

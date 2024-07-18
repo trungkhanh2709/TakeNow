@@ -7,6 +7,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/api/apis.dart';
+import 'package:takenow/screens/MyFriendScreen.dart';
 import 'package:takenow/screens/listChat_Screen.dart';
 import 'package:takenow/screens/profile_screen.dart';
 import 'package:takenow/screens/viewPhotoScreen.dart';
@@ -186,6 +187,29 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
                         }
+                      },
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  bottom: 0,
+                  left: MediaQuery.of(context).size.width / 2 - 25,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0x5C968E8E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: SvgPicture.asset(
+                        'assets/icons/Group_light.svg',
+                        color: Colors.white, // Adjust color as needed
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => MyFriendScreen()));
                       },
                     ),
                   ),
