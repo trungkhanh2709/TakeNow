@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:takenow/api/apis.dart';
 import 'package:takenow/helper/dialogs.dart';
@@ -14,14 +15,20 @@ class FriendSearchScreen extends StatefulWidget {
 
 class _FriendSearchScreenState extends State<FriendSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   DocumentSnapshot? _selectedUser;
   bool _friendRequestSent = false; // Track if friend request has been sent
+  bool _isAlreadyFriend = false;
+  Stream<DocumentSnapshot>? _userStream;
 
   Future<List<DocumentSnapshot>> _searchFriends(String query) async {
+    String currentUserUid = APIs.user.uid;
+
     final result = await FirebaseFirestore.instance
         .collection('users')
         .where('email', isGreaterThanOrEqualTo: query)
         .where('email', isLessThanOrEqualTo: '$query\uf8ff')
+        .where(FieldPath.documentId, isNotEqualTo: currentUserUid)
         .get();
 
     return result.docs;
@@ -36,6 +43,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
           _friendRequestSent = true;
         });
         Dialogs.showSnackbar(context, 'Friend request sent successfully!');
+        _startListeningToUser(friendId);
       } else {
         Dialogs.showSnackbar(context, 'Sending friend request failed.');
       }
@@ -46,7 +54,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
 
   Future<bool> isFriend(String friendId) async {
     String currentUserUid = APIs.user.uid;
-
     try {
       // Get the current user's document
       DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
@@ -70,14 +77,47 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     }
   }
 
+  void _startListeningToUser(String friendId){
+    String currentUserUid = APIs.user.uid;
+    _userStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserUid)
+        .snapshots();
+
+    _userStream!.listen((snapshot) {
+      if(snapshot.exists){
+        var userData = snapshot.data() as Map<String, dynamic>;
+        if (userData.containsKey('friends')) {
+          var friendList = List<String>.from(userData['friends']);
+          bool isFriendStatus = friendList.contains(friendId);
+
+          setState(() {
+            _isAlreadyFriend = isFriendStatus;
+            if(isFriendStatus){
+              _friendRequestSent = false;
+            }
+          });
+
+          if(isFriendStatus){
+            Dialogs.showSnackbar(context, 'Friend request accepted!');
+            _userStream = null;
+          }
+        }
+      }
+    });
+  }
+
   void _showUserDetails(DocumentSnapshot userDoc) {
     setState(() {
       _selectedUser = userDoc;
     });
 
+    _focusNode.unfocus();
+
     isFriend(userDoc.id).then((isFriend) {
       setState(() {
-        _friendRequestSent = isFriend; // Update friend request status
+        _isAlreadyFriend = isFriend; // Update friend request status
+        _friendRequestSent = false; // Reset request sent status if already friends
       });
     });
   }
@@ -97,8 +137,20 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
+      backgroundColor: Color(0xFF2F2E2E),
       appBar: AppBar(
         title: const Text('Find your friend'),
+        backgroundColor: Color(0xFF2F2E2E),
+        leading: IconButton(
+          icon: SvgPicture.asset(
+            'assets/icons/Refund_back_light.svg',
+            width: 30,
+            height: 30,
+          ),
+          onPressed: () {
+            Navigator.pop(context); // Quay về màn hình trước đó (homescreen)
+          },
+        ),
       ),
       body: Padding(
         padding: EdgeInsets.all(screenWidth * 0.04),
@@ -110,15 +162,16 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   child: TypeAheadField<DocumentSnapshot>(
                     textFieldConfiguration: TextFieldConfiguration(
                       controller: _searchController,
+                      focusNode: _focusNode,
+                      style: TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'Enter the email',
+                        labelStyle: TextStyle(color: Colors.white),
                         suffixIcon: IconButton(
-                          icon: Icon(Icons.search),
+                          icon: Icon(Icons.search, color: Colors.white),
                           onPressed: () {
                             String query = _searchController.text.trim();
                             _searchAndDisplayUser(query);
-
-
                           },
                         ),
                       ),
@@ -188,11 +241,17 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                     Spacer(),
                     Padding(
                       padding: EdgeInsets.only(right: screenWidth * 0.02),
-                      child: _friendRequestSent
+                      child: _isAlreadyFriend
                           ? const Text(
-                        'Request Sent',
+                        'Already Friend',
                         style: TextStyle(color: Colors.green, fontSize: 12),
                         textAlign: TextAlign.right,
+                      )
+                      : _friendRequestSent
+                          ? const Text(
+                            'Request Sent',
+                            style: TextStyle(color: Colors.orange, fontSize: 12),
+                            textAlign: TextAlign.right,
                       )
                           : ElevatedButton(
                         style: ElevatedButton.styleFrom(

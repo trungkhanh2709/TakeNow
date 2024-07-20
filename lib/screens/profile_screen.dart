@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:developer';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -29,17 +30,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
+        backgroundColor: Color(0xFF2F2E2E),
         appBar: AppBar(
           title: const Text(
             'Profile Screen',
-            style: TextStyle(color: Colors.black),
+            style: TextStyle(color: Colors.white),
           ),
-          backgroundColor: Colors.lightBlue,
-          iconTheme: IconThemeData(color: Colors.black),
+          backgroundColor: Color(0xFF2F2E2E), // Màu nền cho AppBar
+          leading: IconButton(
+            icon: SvgPicture.asset(
+              'assets/icons/Refund_back_light.svg',
+              width: 30,
+              height: 30,
+            ),
+            onPressed: () {
+              Navigator.pop(context); // Quay về màn hình trước đó (homescreen)
+            },
+          ),
         ),
         floatingActionButton: Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -72,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildProfilePicture(),
                   SizedBox(height: mq.height * .03),
                   Text(widget.user.email,
-                      style: const TextStyle(color: Colors.black54, fontSize: 16)),
+                      style: const TextStyle(color: Colors.white, fontSize: 16)),
                   SizedBox(height: mq.height * .05),
                   _buildTextInputFields(),
                   SizedBox(height: mq.height * .05),
@@ -136,14 +146,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           initialValue: widget.user.name,
           onSaved: (val) => APIs.me.name = val ?? '',
           validator: (val) =>
-          val != null && val.isNotEmpty ? null : 'Required Field',
+            val != null && val.isNotEmpty ? null : 'Required Field',
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.person, color: Colors.blue),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
             hintText: 'Your Name',
-            label: const Text('Name'),
+            hintStyle: const TextStyle(color: Colors.white),
+            label: const Text('Name', style: TextStyle(color: Colors.white)),
           ),
         ),
         SizedBox(height: mq.height * .02),
@@ -151,14 +163,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           initialValue: widget.user.about,
           onSaved: (val) => APIs.me.about = val ?? '',
           validator: (val) =>
-          val != null && val.isNotEmpty ? null : 'Required Field',
+            val != null && val.isNotEmpty ? null : 'Required Field',
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.info_outline, color: Colors.blue),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
             hintText: 'eg. Feeling Happy',
-            label: const Text('About'),
+            hintStyle: const TextStyle(color: Colors.white),
+            label: const Text('About', style: TextStyle(color: Colors.white)),
           ),
         ),
       ],
@@ -169,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ElevatedButton.icon(
       style: ElevatedButton.styleFrom(
         shape: const StadiumBorder(),
-        minimumSize: Size(mq.width * .5, mq.height * .06),
+        minimumSize: Size(mq.width * .4, mq.height * .06),
       ),
       onPressed: () {
         if (_formkey.currentState!.validate()) {
@@ -179,8 +193,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           });
         }
       },
-      icon: const Icon(Icons.edit, size: 28),
-      label: const Text('UPDATE', style: TextStyle(fontSize: 16)),
+      icon: const Icon(Icons.edit, size: 24),
+      label: const Text('Update', style: TextStyle(fontSize: 15)),
     );
   }
 
@@ -188,6 +202,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       children: [
         ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            shape: const StadiumBorder(),
+            minimumSize: Size(mq.width * .4, mq.height * .06),
+          ),
           onPressed: () {
             Navigator.push(
               context,
@@ -196,10 +214,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           },
-          child: const Text('Tìm kiếm bạn bè'),
+          child: const Text('Search For Friends', style: TextStyle(fontSize: 15)),
         ),
         SizedBox(height: 20),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            shape: const StadiumBorder(),
+            minimumSize: Size(mq.width * .4, mq.height * .06),
+          ),
           onPressed: () {
             Navigator.push(
               context,
@@ -208,7 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           },
-          child: const Text('Yêu cầu kết bạn'),
+          child: const Text('Friend Request', style: TextStyle(fontSize: 15)),
         ),
       ],
     );

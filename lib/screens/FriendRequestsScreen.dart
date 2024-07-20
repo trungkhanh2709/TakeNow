@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:takenow/api/apis.dart';
 import 'package:takenow/helper/dialogs.dart';
 
@@ -17,8 +18,20 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     final currentUser = APIs.auth.currentUser;
 
     return Scaffold(
+      backgroundColor: Color(0xFF2F2E2E),
       appBar: AppBar(
-        title: const Text('Yêu cầu kết bạn'),
+        title: const Text('Friend Request'),
+        backgroundColor: Color(0xFF2F2E2E),
+        leading: IconButton(
+          icon: SvgPicture.asset(
+            'assets/icons/Refund_back_light.svg',
+            width: 30,
+            height: 30,
+          ),
+          onPressed: () {
+            Navigator.pop(context); // Quay về màn hình trước đó (homescreen)
+          },
+        ),
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: APIs.firestore.collection('users').doc(currentUser?.uid).snapshots(),
@@ -40,7 +53,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                   builder: (context, snapshot){
                     if(!snapshot.hasData){
                       return const ListTile(
-                        title: Text('Đang tải...'),
+                        title: Text('Loading...'),
                       );
                     }
 
@@ -53,12 +66,12 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                         children: [
                           ElevatedButton(
                               onPressed: () => _respondToRequest(friendId, true),
-                              child: const Text('Chấp nhận'),
+                              child: const Text('Accept'),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
                               onPressed: () => _respondToRequest(friendId, false),
-                              child: const Text('Từ chối'),
+                              child: const Text('Reject'),
                           ),
                         ],
                       ),
@@ -75,12 +88,12 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
   void _respondToRequest(String friendId, bool accept){
     APIs.respondToFriendRequest(friendId, accept).then((success) {
       if(success){
-        Dialogs.showSnackbar(context, accept ? 'Đã chấp nhận lời mời kết bạn,' : 'Đã từ chối lời mời kết bạn.');
+        Dialogs.showSnackbar(context, accept ? 'has accepted the friend request' : 'declined the friend request.');
   } else{
-        Dialogs.showSnackbar(context, 'Đã xảy ra lỗi khi phản hồi yêu cầu kết bạn.');
+        Dialogs.showSnackbar(context, 'An error occurred while responding to the friend request.');
   }
   }).catchError((error) {
-    Dialogs.showSnackbar(context, 'Lỗi: $error');
+    Dialogs.showSnackbar(context, 'Error: $error');
   });
   }
 }
