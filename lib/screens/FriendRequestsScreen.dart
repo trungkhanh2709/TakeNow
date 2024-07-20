@@ -59,8 +59,8 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
 
                     final friend = snapshot.data!;
                     return ListTile(
-                      title: Text(friend['name']),
-                      subtitle: Text(friend['email']),
+                      title: Text(friend['name'], style: TextStyle(color: Colors.white),),
+                      subtitle: Text(friend['email'], style: TextStyle(color: Colors.white),),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
