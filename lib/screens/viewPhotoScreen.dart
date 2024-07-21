@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:image_downloader/image_downloader.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/screens/CommentScreen.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart';
@@ -25,18 +26,28 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   List<DocumentSnapshot>? _posts;
   String imageUrlScroll = '';
   String userId = '';
-
+  String? userLogin = Globals.getGoogleUserId();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2F2E2E),
       body:Stack(
         children: [
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collectionGroup('post_image')
-                .orderBy('timestamp', descending: true)
-                .snapshots(),
+          StreamBuilder<List<DocumentSnapshot>>(
+            stream: CombineLatestStream.list([
+              FirebaseFirestore.instance
+                  .collectionGroup('post_image')
+                  .orderBy('timestamp', descending: true)
+                  .where('visibleTo', arrayContains: userLogin)
+                  .snapshots()
+                  .map((snapshot) => snapshot.docs),
+              FirebaseFirestore.instance
+                  .collectionGroup('post_image')
+                  .orderBy('timestamp', descending: true)
+                  .where('userId', isEqualTo: userLogin)
+                  .snapshots()
+                  .map((snapshot) => snapshot.docs),
+            ]).map((list) => list.expand((docs) => docs).toList()),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
@@ -46,7 +57,10 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                 case ConnectionState.waiting:
                   return const Center(child: CircularProgressIndicator());
                 default:
-                  _posts = snapshot.data?.docs;
+                  _posts = snapshot.data;
+                  if (_posts == null || _posts!.isEmpty) {
+                    return Center(child: Text('No posts available'));
+                  }
                   return PageView.builder(
                     controller: _pageController,
                     scrollDirection: Axis.vertical,

@@ -210,6 +210,9 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
           allRecipients.addAll(groupMembers);
         }
       }
+      String idInArray = Globals.getGoogleUserId().toString();
+      allRecipients.add(idInArray);
+
       String idpost = _generateRandomId(10);
 
       await APIs.upLoadPhoto(caption, userId, _image!, allRecipients,idpost);
@@ -308,6 +311,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen>
                           selectedFriends.add(friendData['id']);
                         }
                       }
+
                     });
                   },
                   child: Container(
