@@ -6,15 +6,16 @@ import 'package:camera/camera.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:takenow/helper/my_date_util.dart';
 import 'package:takenow/models/chat_user.dart';
 import 'package:takenow/models/post_user.dart';
 import 'package:takenow/widgets/message_card.dart';
 import 'package:takenow/models/message.dart'
-    as message_model; // Sử dụng alias cho message.
+as message_model; // Sử dụng alias cho message.
 import 'package:takenow/models/post_user.dart'
-    as post_user_model; // Sử dụng alias cho post_user.dart
+as post_user_model; // Sử dụng alias cho post_user.dart
 
 import '../api/apis.dart';
 import '../main.dart';
@@ -55,13 +56,12 @@ class _ChatScreenState extends State<ChatScreen> {
             }
           },
           child: Scaffold(
+            backgroundColor: Color(0xFF2F2E2E),
             appBar: AppBar(
               automaticallyImplyLeading: false,
               flexibleSpace: _appBar(),
+              backgroundColor: Color(0xFF2F2E2E),
             ),
-
-            backgroundColor: const Color.fromARGB(255, 234, 248, 255),
-
             //body
             body: Column(
               children: [
@@ -70,17 +70,17 @@ class _ChatScreenState extends State<ChatScreen> {
                     stream: APIs.getAllMesage(widget.user),
                     builder: (context, snapshot) {
                       switch (snapshot.connectionState) {
-                        //if data is loading
+                      //if data is loading
                         case ConnectionState.waiting:
                         case ConnectionState.none:
                           return const SizedBox();
 
-                        //if some or all data is loaded => show
+                      //if some or all data is loaded => show
                         case ConnectionState.active:
                         case ConnectionState.done:
                           final data = snapshot.data?.docs;
                           _list = data?.map((e) => Message.fromJson(e.data()))
-                                  .toList() ??
+                              .toList() ??
                               [];
 
                           if (_list.isNotEmpty) {
@@ -95,7 +95,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           } else {
                             return const Center(
                               child: Text('Say Hii! 👋',
-                                  style: TextStyle(fontSize: 20)),
+                                  style: TextStyle(fontSize: 20, color: Colors.white)),
                             );
                           }
                       }
@@ -109,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       alignment: Alignment.centerRight,
                       child: Padding(
                           padding:
-                              EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                          EdgeInsets.symmetric(vertical: 8, horizontal: 20),
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                           ))),
@@ -150,19 +150,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
               return Row(
                 children: [
-                  //black button
                   IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon:
-                          const Icon(Icons.arrow_back, color: Colors.black54)),
-
+                    icon: SvgPicture.asset(
+                      'assets/icons/Refund_back_light.svg',
+                      width: 27,
+                      height: 27,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(mq.height * .03),
                     child: CachedNetworkImage(
                       width: mq.height * .05,
                       height: mq.height * .05,
                       imageUrl:
-                          list.isNotEmpty ? list[0].name : widget.user.image,
+                      list.isNotEmpty ? list[0].name : widget.user.image,
                       //placeholder: (context, url) => CircularProgressIndicator(),
                       errorWidget: (context, url, error) => const CircleAvatar(
                           child: Icon(CupertinoIcons.person)),
@@ -179,7 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       Text(widget.user.name,
                           style: const TextStyle(
                               fontSize: 16,
-                              color: Colors.black87,
+                              color: Colors.white,
                               fontWeight: FontWeight.w500)),
 
                       //for adding some space
@@ -189,16 +193,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       Text(
                           list.isNotEmpty
                               ? list[0].isOnline
-                                  ? 'Online'
-                                  : MyDateUtil.getLastActiveTime(
-                                      context: context,
-                                      lastActive: list[0].lastActive)
+                              ? 'Online'
                               : MyDateUtil.getLastActiveTime(
-                                  context: context,
-                                  lastActive: widget.user.lastActive),
+                              context: context,
+                              lastActive: list[0].lastActive)
+                              : MyDateUtil.getLastActiveTime(
+                              context: context,
+                              lastActive: widget.user.lastActive),
                           style: const TextStyle(
                               fontSize: 16,
-                              color: Colors.black54,
+                              color: Colors.white,
                               fontWeight: FontWeight.w500)),
                     ],
                   )
@@ -232,17 +236,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   Expanded(
                       child: TextField(
-                    controller: _textController,
-                    keyboardType: TextInputType.multiline,
-                    maxLines: null,
-                    onTap: () {
-                      if (_showEmoji) setState(() => _showEmoji = !_showEmoji);
-                    },
-                    decoration: const InputDecoration(
-                        hintText: 'Type Something...',
-                        hintStyle: TextStyle(color: Colors.blueAccent),
-                        border: InputBorder.none),
-                  )),
+                        controller: _textController,
+                        keyboardType: TextInputType.multiline,
+                        maxLines: null,
+                        onTap: () {
+                          if (_showEmoji) setState(() => _showEmoji = !_showEmoji);
+                        },
+                        decoration: const InputDecoration(
+                            hintText: 'Type Something...',
+                            hintStyle: TextStyle(color: Colors.blueAccent),
+                            border: InputBorder.none),
+                      )
+                  ),
 
                   //pick image from gallery button
                   IconButton(
@@ -251,7 +256,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                         // Pick an image.
                         final List<XFile> images =
-                            await picker.pickMultiImage(imageQuality: 70);
+                        await picker.pickMultiImage(imageQuality: 70);
                         for (var i in images) {
                           log('Image Path: ${i.path}');
                           setState(() => _isUpLoading = true);
@@ -300,7 +305,7 @@ class _ChatScreenState extends State<ChatScreen> {
             },
             minWidth: 0,
             padding:
-                const EdgeInsets.only(top: 10, bottom: 10, right: 5, left: 10),
+            const EdgeInsets.only(top: 10, bottom: 10, right: 5, left: 10),
             shape: CircleBorder(),
             color: Colors.green,
             child: Icon(Icons.send, color: Colors.white, size: 28),

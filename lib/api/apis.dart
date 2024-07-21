@@ -15,6 +15,7 @@ class APIs {
   static FirebaseAuth auth = FirebaseAuth.instance;
   static FirebaseFirestore firestore = FirebaseFirestore.instance;
   static FirebaseStorage storage = FirebaseStorage.instance;
+
   static late ChatUser me;
 
   static User get user => auth.currentUser!;

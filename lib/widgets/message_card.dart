@@ -43,7 +43,7 @@ class _MessageCardState extends State<MessageCard> {
                 ? mq.width * .03
                 : mq.width * .04),
             margin: EdgeInsets.symmetric(
-              horizontal: mq.width * .04, vertical: mq.height * .01
+                horizontal: mq.width * .04, vertical: mq.height * .01
             ),
             decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 221, 245, 255),
@@ -52,11 +52,11 @@ class _MessageCardState extends State<MessageCard> {
                 borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
-                  bottomRight: Radius.circular(30))),
+                    bottomRight: Radius.circular(30))),
             child: widget.message.type == MessageType.text ?
             Text(
-                widget.message.msg,
-                style: TextStyle(fontSize: 15, color: Colors.black87),
+              widget.message.msg,
+              style: TextStyle(fontSize: 15, color: Colors.black87),
             )
             //show image
                 : ClipRRect(
@@ -71,8 +71,8 @@ class _MessageCardState extends State<MessageCard> {
                   errorWidget: (context, url, error) => const Icon(Icons.image, size: 70)
               ),
             ),
-            ),
           ),
+        ),
 
         //message time
         Padding(
@@ -80,7 +80,7 @@ class _MessageCardState extends State<MessageCard> {
           child: Text(
             MyDateUtil.getFormattedTime(
                 context: context, time: widget.message.sent),
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            style: const TextStyle(fontSize: 13, color: Colors.white),
           ),
         ),
       ],
@@ -99,8 +99,8 @@ class _MessageCardState extends State<MessageCard> {
             SizedBox(width: mq.width * .04),
 
             //double tick blue icon for message read
-             if(widget.message.read.isNotEmpty)
-                const Icon(Icons.done_all_rounded, color: Colors.blue, size: 20),
+            if(widget.message.read.isNotEmpty)
+              const Icon(Icons.done_all_rounded, color: Colors.lightBlueAccent, size: 20),
 
             //for adding some space
             SizedBox(width: 2),
@@ -109,7 +109,7 @@ class _MessageCardState extends State<MessageCard> {
             Text(
               MyDateUtil.getFormattedTime(
                   context: context, time: widget.message.sent),
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
+              style: const TextStyle(fontSize: 13, color: Colors.white),
             ),
           ],
         ),
@@ -132,22 +132,22 @@ class _MessageCardState extends State<MessageCard> {
                     topRight: Radius.circular(30),
                     bottomLeft: Radius.circular(30))),
             child: widget.message.type == MessageType.text ?
-              Text(
+            Text(
               widget.message.msg,
               style: TextStyle(fontSize: 15, color: Colors.black87),
-              )
-              //show image
-              : ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: CachedNetworkImage(
-                imageUrl: widget.message.msg,
-                placeholder: (context, url) =>
-                    const Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: const CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                errorWidget: (context, url, error) => const Icon(Icons.image, size: 70)
-                ),
+            )
+            //show image
+                : ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: CachedNetworkImage(
+                  imageUrl: widget.message.msg,
+                  placeholder: (context, url) =>
+                  const Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(Icons.image, size: 70)
+              ),
             ),
           ),
         ),
