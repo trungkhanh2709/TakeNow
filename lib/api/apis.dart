@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart';
 import 'package:takenow/models/chat_user.dart';
 
 import 'package:takenow/models/message.dart';
@@ -22,15 +23,28 @@ class APIs {
 
   //for accessing firebase messaging (Push Notification)
   static FirebaseMessaging fMessaging = FirebaseMessaging.instance;
+
+  //for getting firebase messaging token
   static Future<void> getFirebaseMessagingToken() async {
     await fMessaging.requestPermission();
-    fMessaging.getToken().then((t) {
+
+    await fMessaging.getToken().then((t) {
       if(t != null){
         me.pushToken = t;
         log('Push Token: $t');
       }
     });
   }
+
+  // static Future<void> sendPushNotification() async {
+  //   final body = {
+  //     "to"
+  //   };
+  //   var response = await post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+  //       body: );
+  //   log('Response status: ${response.statusCode}');
+  //   log('Response body: ${response.body}');
+  // }
 
   //check user exists or not
   static Future<bool> userExists() async {
@@ -367,5 +381,24 @@ class APIs {
       print('Error removing friend request: $e');
       return false;
     }
+  }
+
+  //delete message
+  static Future<void> deleteMessage(Message message) async {
+    await firestore
+        .collection('chats/${getConversationID(message.told)}/messages/')
+        .doc(message.sent)
+        .delete();
+    if(message.type == MessageType.image){
+      await storage.refFromURL(message.msg).delete();
+    }
+  }
+
+  //update message
+  static Future<void> updateMessage(Message message, String updateMsg) async {
+    await firestore
+        .collection('chats/${getConversationID(message.told)}/messages/')
+        .doc(message.sent)
+        .update({'msg': updateMsg});
   }
 }
