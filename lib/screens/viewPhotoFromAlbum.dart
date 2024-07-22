@@ -95,7 +95,8 @@ class _ViewPhotoFromAlbumState extends State<ViewPhotoFromAlbum> {
                       ),
                     ),
                     ActivityCard(
-                      posts: widget.posts, // Pass the posts list
+                      // Pass the current post to ActivityCard
+                      posts: [document], // Pass only the current document
                       pageController: _pageController,
                     ),
                     const SizedBox(height: 10.0),

@@ -205,7 +205,7 @@ class _ActivityCardState extends State<ActivityCard> {
         List<Widget> emotionWidgets = [];
         for (var entry in groupedEmotions.entries) {
           List<Map<String, dynamic>> recentEmotionsFromSender =
-              takeLast(entry.value, 8);
+              takeLast(entry.value, 5);
 
           emotionWidgets.add(
             Padding(
@@ -221,48 +221,96 @@ class _ActivityCardState extends State<ActivityCard> {
                   } else if (snapshot.hasData) {
                     String senderName = snapshot.data!.get('name') ?? 'Unknown';
                     String avatarUrl = snapshot.data!.get('image') ?? '';
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: <Widget>[
-                            CircleAvatar(
-                              radius: 19.0,
-                              backgroundImage: NetworkImage(avatarUrl),
-                            ),
-                            SizedBox(width: 8.0),
-                            Text(
-                              '$senderName',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8.0),
-                        Row(
-                          children: recentEmotionsFromSender.map((emotion) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: Text(
-                                emotion['emoji'],
-                                style: TextStyle(
-                                  fontSize: 24.0,
+
+                    // Calculate height of name and emoji
+                    final textPainterName = TextPainter(
+                      text: TextSpan(
+                        text: senderName,
+                        style: TextStyle(
+                            fontSize: 20.0,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
+                      ),
+                      textDirection: TextDirection.ltr,
+                    )..layout();
+
+                    final textPainterEmoji = TextPainter(
+                      text: TextSpan(
+                        text: recentEmotionsFromSender.isNotEmpty
+                            ? recentEmotionsFromSender.first['emoji']
+                            : '',
+                        style: TextStyle(fontSize: 24.0, color: Colors.white),
+                      ),
+                      textDirection: TextDirection.ltr,
+                    )..layout();
+
+                    double totalHeight = textPainterName.size.height +
+                        textPainterEmoji.size.height +
+                        8.0; // +8.0 for spacing
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 60, 60, 60),
+                        borderRadius: BorderRadius.circular(40.0),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: totalHeight / 2, // Set avatar height
+                            backgroundImage: NetworkImage(avatarUrl),
+                          ),
+                          SizedBox(width: 16.0),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$senderName',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20.0,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
+                                SizedBox(height: 4.0),
+                                Row(
+                                  children:
+                                      recentEmotionsFromSender.map((emotion) {
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(right: 8.0),
+                                      child: Text(
+                                        emotion['emoji'],
+                                        style: TextStyle(
+                                          fontSize: 24.0,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   } else {
-                    return Text(
-                      'Sender: Loading...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18.0,
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 60, 60, 60),
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      child: Text(
+                        'Sender: Loading...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18.0,
+                        ),
                       ),
                     );
                   }
@@ -295,33 +343,6 @@ class _ActivityCardState extends State<ActivityCard> {
                             ),
                           ),
                         ],
-                ),
-              ),
-            );
-          },
-        );
-      } else {
-        showModalBottomSheet(
-          context: context,
-          builder: (BuildContext context) {
-            return FractionallySizedBox(
-              heightFactor: 0.88,
-              child: Container(
-                color: Color.fromARGB(255, 48, 48, 48),
-                padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-                child: ListView(
-                  children: <Widget>[
-                    ListTile(
-                      title: Text(
-                        'Chưa có hoạt động nào',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             );
