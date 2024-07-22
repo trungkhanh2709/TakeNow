@@ -3,15 +3,17 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:image_downloader/image_downloader.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:rxdart/rxdart.dart';
 import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/screens/CommentScreen.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart';
 import 'package:takenow/widgets/post_user_card.dart';
+import 'package:takenow/widgets/activity_card.dart';
+import 'package:rxdart/rxdart.dart';
 
 class ViewPhotoScreen extends StatefulWidget {
   const ViewPhotoScreen({Key? key}) : super(key: key);
@@ -26,28 +28,80 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
   List<DocumentSnapshot>? _posts;
   String imageUrlScroll = '';
   String userId = '';
+  String userIdPost = '';
+  String postId = ''; // Add this to store postId
+  User? currentUser;
+  List<String> _selectedFriendIds = [];
+  String selectedFriendName = 'All Friends';
   String? userLogin = Globals.getGoogleUserId();
+  @override
+  void initState() {
+    super.initState();
+    currentUser = FirebaseAuth.instance.currentUser;
+  }
+
+  String? userID = Globals.getGoogleUserId();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF2F2E2E),
+        leading: IconButton(
+          icon: SvgPicture.asset(
+            'assets/icons/Refund_back_light.svg',
+            width: 30,
+            height: 30,
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        title: Center(
+          child: GestureDetector(
+            onTap: () {
+              _showFriendsList(context);
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+              decoration: BoxDecoration(
+                color: Color.fromRGBO(88, 81, 81, 1),
+                borderRadius: BorderRadius.circular(40.0),
+              ),
+              child: Text(
+                selectedFriendName,
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ),
+        ),
+        actions: [SizedBox(width: 50)],
+      ),
       backgroundColor: const Color(0xFF2F2E2E),
-      body:Stack(
+      body: Stack(
         children: [
           StreamBuilder<List<DocumentSnapshot>>(
-            stream: CombineLatestStream.list([
-              FirebaseFirestore.instance
-                  .collectionGroup('post_image')
-                  .orderBy('timestamp', descending: true)
-                  .where('visibleTo', arrayContains: userLogin)
-                  .snapshots()
-                  .map((snapshot) => snapshot.docs),
-              FirebaseFirestore.instance
-                  .collectionGroup('post_image')
-                  .orderBy('timestamp', descending: true)
-                  .where('userId', isEqualTo: userLogin)
-                  .snapshots()
-                  .map((snapshot) => snapshot.docs),
-            ]).map((list) => list.expand((docs) => docs).toList()),
+            stream: _selectedFriendIds.isEmpty
+                ? CombineLatestStream.list([
+                    FirebaseFirestore.instance
+                        .collectionGroup('post_image')
+                        .orderBy('timestamp', descending: true)
+                        .where('visibleTo', arrayContains: userLogin)
+                        .snapshots()
+                        .map((snapshot) => snapshot.docs),
+                    FirebaseFirestore.instance
+                        .collectionGroup('post_image')
+                        .orderBy('timestamp', descending: true)
+                        .where('userId', isEqualTo: userLogin)
+                        .snapshots()
+                        .map((snapshot) => snapshot.docs),
+                  ]).map((list) => list.expand((docs) => docs).toList())
+                : FirebaseFirestore.instance
+                    .collectionGroup('post_image')
+                    .orderBy('timestamp', descending: true)
+                    .where('visibleTo', arrayContains: userLogin)
+                    .where('userId', whereIn: _selectedFriendIds)
+                    .snapshots()
+                    .map((snapshot) => snapshot.docs),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
@@ -67,9 +121,10 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                     itemCount: _posts?.length ?? 0,
                     itemBuilder: (context, index) {
                       DocumentSnapshot document = _posts![index];
-                       imageUrlScroll = document['imageUrl'];
+                      imageUrlScroll = document['imageUrl'];
                       String caption = document['caption'];
-                       userId = document['userId'];
+                      userId = document['userId'];
+                      userIdPost = userId;
                       String timestamp = document['timestamp'];
 
                       int timestampInt = int.parse(timestamp);
@@ -87,63 +142,56 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                                 index: index,
                               ),
                             ),
+                            ActivityCard(
+                              posts: _posts ?? [],
+                              pageController: _pageController,
+                            ),
+                            const SizedBox(height: 10.0),
                             Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-
-                                children: [
-                                  SizedBox(width: 0),
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ViewAlbumScreen(),
-                                        ),
-                                      );
-                                    },
-                                    child: SvgPicture.asset(
-                                      'assets/icons/darhboard.svg',
-                                      width: 40,
-                                      height: 40,
-                                      color: Colors.white,
-                                    ),
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                SizedBox(width: 0),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ViewAlbumScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: SvgPicture.asset(
+                                    'assets/icons/darhboard.svg',
+                                    width: 40,
+                                    height: 40,
+                                    color: Colors.white,
                                   ),
-                                  const SizedBox(height: 10.0),
-                                  EmotionSelector(
-                                    selectedEmotion: selectedEmotion,
-                                    imageUrlScroll: imageUrlScroll,
-                                    onEmotionSelected: onEmotionSelected,
-                                    onSendMessage: () {
-                                      // Handle send message action here
-                                    },
-                                    onOpenEmojiPicker: () {
-                                      _openEmojiPicker(context);
-                                    },
-
-
-
+                                ),
+                                const SizedBox(height: 10.0),
+                                EmotionSelector(
+                                  selectedEmotion: selectedEmotion,
+                                  imageUrlScroll: imageUrlScroll,
+                                  onEmotionSelected: onEmotionSelected,
+                                  onSendMessage: () {},
+                                  onOpenEmojiPicker: () {
+                                    _openEmojiPicker(context);
+                                  },
+                                ),
+                                const SizedBox(width: 10.0),
+                                GestureDetector(
+                                  onTap: () {
+                                    _showSortMenu(context);
+                                  },
+                                  child: SvgPicture.asset(
+                                    'assets/icons/Sort_random_light.svg',
+                                    width: 40,
+                                    height: 40,
+                                    color: Colors.white,
                                   ),
-                                  const SizedBox(width: 10.0),
-                                  GestureDetector(
-
-                                    onTap: (){
-                                        _showSortMenu(context);
-
-                                    },
-
-                                    child: SvgPicture.asset(
-                                      'assets/icons/Sort_random_light.svg',
-                                      width: 40,
-                                      height: 40,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  SizedBox(width: 0),
-
-                                ]
-
-                            )
-
+                                ),
+                                SizedBox(width: 0),
+                              ],
+                            ),
                           ],
                         ),
                       );
@@ -153,9 +201,114 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
             },
           ),
         ],
-      )
+      ),
+    );
+  }
 
+  void _showFriendsList(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      builder: (BuildContext context) {
+        return FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser!.uid)
+              .get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(
+                  child: Text('Error: ${snapshot.error}',
+                      style: TextStyle(color: Colors.white)));
+            } else if (!snapshot.hasData || !snapshot.data!.exists) {
+              return Center(
+                  child: Text('No friends found',
+                      style: TextStyle(color: Colors.white)));
+            }
 
+            List<dynamic> friends = snapshot.data!['friends'] ?? [];
+            List<String> friendIds = friends.cast<String>();
+
+            return ListView(
+              padding: EdgeInsets.only(top: 50.0),
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.0),
+                  leading: SvgPicture.asset(
+                    'assets/icons/Group_light.svg',
+                    width: 24,
+                    height: 24,
+                    color: Colors.white,
+                  ),
+                  title: Text('All Friends',
+                      style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    setState(() {
+                      _selectedFriendIds.clear();
+                      selectedFriendName = 'All Friends';
+                      userId =
+                          ''; // Clear userId to show posts from all friends
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+                if (friends.isNotEmpty)
+                  ...friendIds.map((friendId) {
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(friendId)
+                          .get(),
+                      builder: (context, friendSnapshot) {
+                        if (friendSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return ListTile(
+                            title: Text('Loading...',
+                                style: TextStyle(color: Colors.white)),
+                          );
+                        } else if (friendSnapshot.hasError) {
+                          return ListTile(
+                            title: Text('Error: ${friendSnapshot.error}',
+                                style: TextStyle(color: Colors.white)),
+                          );
+                        } else if (!friendSnapshot.hasData ||
+                            !friendSnapshot.data!.exists) {
+                          return ListTile(
+                            title: Text('Friend not found',
+                                style: TextStyle(color: Colors.white)),
+                          );
+                        }
+
+                        String friendName = friendSnapshot.data!['name'];
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage:
+                                NetworkImage(friendSnapshot.data!['image']),
+                          ),
+                          title: Text(friendName,
+                              style: TextStyle(color: Colors.white)),
+                          onTap: () {
+                            setState(() {
+                              _selectedFriendIds = [friendId];
+                              selectedFriendName = friendName;
+                              userId =
+                                  friendId; // Set userId to show posts from this friend
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    );
+                  }).toList(),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -163,16 +316,65 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
     setState(() {
       selectedEmotion = emotion;
     });
+
+    if (_posts != null && _posts!.isNotEmpty) {
+      postId =
+          _posts![_pageController.page!.round()].id; // Lấy postId từ _posts
+      _saveEmotionToFirestore(
+          postId, emotion); // Gọi hàm để lưu emotion vào Firestore
+    }
   }
 
   void _openEmojiPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (BuildContext bc) {
-        return EmojiPicker();
+      builder: (BuildContext context) {
+        return EmojiPicker(
+          onEmojiSelected: (category, emoji) {
+            onEmotionSelected(emoji.emoji);
+            Navigator.pop(context); // Close the emoji picker after selection
+          },
+        );
       },
     );
   }
+
+  void _saveEmotionToFirestore(String postId, String emotion) async {
+    if (currentUser == null || postId.isEmpty) return;
+
+    try {
+      final userId = currentUser!.uid;
+      print('postId: $postId'); // In ra postId của bài đăng
+      print('userIdPost: $userIdPost'); // In ra userId của chủ bài đăng
+
+      // Retrieve the userID of the post owner
+      final postSnapshot = await FirebaseFirestore.instance
+          .collection('posts')
+          .doc('$userIdPost' +
+              '_$userIdPost') // Concatenate userIdPost with "_$userIdPost"
+          .collection('post_image')
+          .doc(postId)
+          .get();
+
+      if (!postSnapshot.exists) {
+        print('Document with postId $postId does not exist.');
+        return;
+      }
+
+      // Update emotions in the specific document
+      await postSnapshot.reference.update({
+        'emotions': FieldValue.arrayUnion([
+          {
+            'emoji': emotion,
+            'sender': userId,
+          }
+        ]),
+      });
+    } catch (e) {
+      log('Error saving emotion: $e');
+    }
+  }
+
   Future<void> deletePost(String imageUrl, String? currentUserId) async {
     final FirebaseFirestore _firestore = FirebaseFirestore.instance;
     QuerySnapshot querySnapshot = await _firestore
@@ -183,7 +385,7 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
     if (querySnapshot.docs.isNotEmpty) {
       DocumentSnapshot postSnapshot = querySnapshot.docs.first;
       Map<String, dynamic> postData =
-      postSnapshot.data() as Map<String, dynamic>;
+          postSnapshot.data() as Map<String, dynamic>;
 
       String postUserId = postData['userId'];
       List<dynamic> visibleTo = postData['visibleTo'];
@@ -253,6 +455,7 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
       log("No post found with the given imageUrl");
     }
   }
+
   Future<void> downloadImageToAlbum(String imageUrl) async {
     bool hasPermission = await _requestPermission(Permission.storage);
     if (!hasPermission) {
@@ -261,11 +464,12 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
     }
 
     try {
-      log('message ' +imageUrl);
+      log('message ' + imageUrl);
       String? imageId = await ImageDownloader.downloadImage(
         imageUrl,
         destination: AndroidDestinationType.directoryPictures
-          ..subDirectory("Takenow/${DateTime.now().millisecondsSinceEpoch}.jpg"),
+          ..subDirectory(
+              "Takenow/${DateTime.now().millisecondsSinceEpoch}.jpg"),
       );
 
       if (imageId == null) {
@@ -321,19 +525,18 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
               ListTile(
                 leading: Icon(Icons.download),
                 title: Text('Download'),
-                onTap: () async  {
+                onTap: () async {
                   log('imageUrlScroll' + imageUrlScroll);
                   await downloadImageToAlbum(imageUrlScroll);
                   Navigator.pop(context);
                 },
               ),
-
               ListTile(
                 leading: Icon(Icons.delete),
                 title: Text('Xóa'),
                 onTap: () async {
                   String? iduserLogin = Globals.getGoogleUserId();
-                  await deletePost(imageUrlScroll,iduserLogin );
+                  await deletePost(imageUrlScroll, iduserLogin);
 
                   Navigator.pop(context);
                 },
@@ -357,8 +560,6 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
       },
     );
   }
-
-
 }
 
 class EmotionSelector extends StatelessWidget {
@@ -368,7 +569,6 @@ class EmotionSelector extends StatelessWidget {
   final VoidCallback? onSendMessage;
   final VoidCallback? onOpenEmojiPicker;
 
-
   const EmotionSelector({
     Key? key,
     required this.selectedEmotion,
@@ -376,24 +576,21 @@ class EmotionSelector extends StatelessWidget {
     required this.onEmotionSelected,
     this.onSendMessage,
     this.onOpenEmojiPicker,
-
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-width: 250,
+      width: 250,
       margin: const EdgeInsets.only(bottom: 20.0),
       decoration: BoxDecoration(
         color: const Color.fromRGBO(88, 81, 81, 1),
         borderRadius: BorderRadius.circular(40.0),
       ),
       padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 15),
-
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-
           TextButton(
             onPressed: () {
               Navigator.push(
@@ -419,7 +616,6 @@ width: 250,
               color: Colors.white,
             ),
           ),
-
         ],
       ),
     );
