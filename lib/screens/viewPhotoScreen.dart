@@ -541,13 +541,7 @@ class _ViewPhotoScreenState extends State<ViewPhotoScreen> {
                   Navigator.pop(context);
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.report),
-                title: Text('Báo cáo'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
+
               ListTile(
                 title: Text('Hủy'),
                 onTap: () {

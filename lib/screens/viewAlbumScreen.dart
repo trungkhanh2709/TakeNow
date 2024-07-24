@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:takenow/Class/Globals.dart';
 import 'package:takenow/screens/viewPhotoFromAlbum.dart';
@@ -31,7 +32,11 @@ class _ViewAlbumScreenState extends State<ViewAlbumScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF2F2E2E),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: SvgPicture.asset(
+            'assets/icons/Refund_back_light.svg',
+            width: 30,
+            height: 30,
+          ),
           onPressed: () {
             Navigator.of(context).pop();
           },

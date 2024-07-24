@@ -324,8 +324,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
               child: Row(
+
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+
                   Text(
                     'Album',
                     style: TextStyle(color: Colors.white, fontSize: 16),
@@ -337,10 +339,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 24,
                     color: Colors.white,
                   ),
-                  SizedBox(width: 40), // Space between icon and text
+                  // Dùng Spacer để căn giữa
                 ],
               ),
             ),
+
           ],
         ),
       ),

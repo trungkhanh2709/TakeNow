@@ -84,7 +84,7 @@ class PostUserCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: 19),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
