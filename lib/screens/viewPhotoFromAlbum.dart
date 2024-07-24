@@ -13,7 +13,6 @@ import 'package:takenow/screens/CommentScreen.dart';
 import 'package:takenow/screens/viewAlbumScreen.dart';
 import 'package:takenow/widgets/post_user_card.dart';
 import 'package:takenow/widgets/activity_card.dart';
-import 'package:rxdart/rxdart.dart';
 
 class ViewPhotoFromAlbum extends StatefulWidget {
   final List<DocumentSnapshot> posts; // Receive posts
@@ -95,8 +94,7 @@ class _ViewPhotoFromAlbumState extends State<ViewPhotoFromAlbum> {
                       ),
                     ),
                     ActivityCard(
-                      // Pass the current post to ActivityCard
-                      posts: [document], // Pass only the current document
+                      posts: [document],
                       pageController: _pageController,
                     ),
                     const SizedBox(height: 10.0),
@@ -155,16 +153,38 @@ class _ViewPhotoFromAlbumState extends State<ViewPhotoFromAlbum> {
     );
   }
 
-  void onEmotionSelected(String emotion) {
+  void onEmotionSelected(String emotion) async {
     setState(() {
       selectedEmotion = emotion;
     });
 
-    if (postId != null && widget.posts.isNotEmpty) {
+    if (widget.posts.isNotEmpty) {
       postId = widget.posts[_pageController.page!.round()]
           .id; // Use widget.posts instead of _posts
-      _saveEmotionToFirestore(
-          postId, emotion); // Call method to save emotion to Firestore
+      await _saveEmotionToFirestore(postId, emotion);
+
+      setState(() {
+        _fetchUpdatedPostData();
+      });
+    }
+  }
+
+  void _fetchUpdatedPostData() async {
+    try {
+      for (int i = 0; i < widget.posts.length; i++) {
+        DocumentSnapshot updatedPost = await FirebaseFirestore.instance
+            .collection('posts')
+            .doc('${widget.posts[i]['userId']}_${widget.posts[i]['userId']}')
+            .collection('post_image')
+            .doc(widget.posts[i].id)
+            .get();
+
+        setState(() {
+          widget.posts[i] = updatedPost;
+        });
+      }
+    } catch (e) {
+      log('Error fetching updated post data: $e');
     }
   }
 
@@ -182,19 +202,17 @@ class _ViewPhotoFromAlbumState extends State<ViewPhotoFromAlbum> {
     );
   }
 
-  void _saveEmotionToFirestore(String postId, String emotion) async {
+  Future<void> _saveEmotionToFirestore(String postId, String emotion) async {
     if (currentUser == null || postId.isEmpty) return;
 
     try {
       final userId = currentUser!.uid;
-      print('postId: $postId'); // In ra postId của bài đăng
-      print('userIdPost: $userIdPost'); // In ra userId của chủ bài đăng
+      print('postId: $postId');
+      print('userIdPost: $userIdPost');
 
-      // Retrieve the userID of the post owner
       final postSnapshot = await FirebaseFirestore.instance
           .collection('posts')
-          .doc('$userIdPost' +
-              '_$userIdPost') // Concatenate userIdPost with "_$userIdPost"
+          .doc('$userIdPost' + '_$userIdPost')
           .collection('post_image')
           .doc(postId)
           .get();
@@ -204,7 +222,6 @@ class _ViewPhotoFromAlbumState extends State<ViewPhotoFromAlbum> {
         return;
       }
 
-      // Update emotions in the specific document
       await postSnapshot.reference.update({
         'emotions': FieldValue.arrayUnion([
           {
